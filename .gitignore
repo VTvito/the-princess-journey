@@ -8,6 +8,8 @@ yarn-error.log*
 playwright-report/
 test-results/
 *.webm
+# Smoke-test screenshot output (regenerated every run)
+tools/test/*.png
 
 # --- Python tooling cruft ---
 __pycache__/

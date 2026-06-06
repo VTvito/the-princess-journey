@@ -1,0 +1,8 @@
+# Let git normalize line endings: store LF, check out native (CRLF on Windows).
+# Silences the "LF will be replaced by CRLF" churn warnings.
+* text=auto
+
+# Binary assets — never touch line endings.
+*.png binary
+*.wav binary
+*.mp3 binary

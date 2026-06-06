@@ -1,0 +1,14 @@
+{
+  "name": "the-princess-journey",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personalized 2D platformer (Kaplay, no build step). This package.json exists ONLY for the dev-time browser test harness; the game itself loads Kaplay from a CDN and needs no install/build.",
+  "scripts": {
+    "serve": "python tools/serve.py 8137",
+    "test": "node tools/test/smoke.mjs",
+    "test:smoke": "node tools/test/smoke.mjs"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.60.0"
+  }
+}
