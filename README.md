@@ -25,6 +25,22 @@ Then open <http://localhost:8080> and play. On mobile, hold the device in **land
 > `tools/serve.py` forces the correct `text/javascript` type. (`npx http-server` or the
 > VS Code **Live Server** extension also work.)
 
+## Testing
+
+Browser-level checks run in the installed **Edge** via `playwright-core` (a dev-only
+dependency — the game itself still has no build step). Start the server, then run a test:
+
+```bash
+npm install             # once: fetches playwright-core (skips the browser download)
+npm run serve           # terminal 1 — serves http://localhost:8137
+npm test                # terminal 2 — smoke: boots to the menu, no console errors
+npm run test:features   # deeper: audio toggle, movement/jump, Insert Coin, finale receipt
+```
+
+Each writes a screenshot to `tools/test/`. The tests read a localhost-only dev handle
+(`window.__pj.k`, set in `src/main.js`) to introspect the engine; it's never attached on a
+real deployment.
+
 ## Controls
 
 - **Desktop:** ◀ ▶ arrows to move, **Space** or **↑** to jump.
@@ -57,22 +73,29 @@ file's **extension** changes (e.g. real music as `.mp3`), update the matching pa
 ## Project structure
 
 ```
-index.html              canvas mount + rotate overlay + on-screen touch controls
+index.html              canvas mount + rotate overlay + touch controls + DOM overlays
 style.css               full-viewport canvas, letterbox bars, overlays, touch buttons
+package.json            dev-only: scripts + playwright-core for the test harness
 src/
-  main.js               entry: registers scenes, loads assets, wires touch buttons
+  main.js               entry: registers scenes, loads assets, wires touch + audio buttons
   kaplayCtx.js          creates & exports the single kaplay() context `k`
   config.js             virtual resolution, palette, CHARACTERS[], PHYSICS, ASSETS
   assets.js             loads sprites/sounds from the ASSETS manifest
-  state.js              game state + localStorage (selectedCharacter, currentLevel)
+  state.js              localStorage: selectedCharacter, currentLevel, totaleCoccoline
   controls.js           reusable input layer: keyboard + DOM touch buttons
+  juice.js              game-feel helpers (confetti burst) — pure Kaplay, no DOM
+  ui/                   DOM/HTML overlays, isolated from the game's collision logic
+    insertCoin.js       "Insert Coin" death overlay (spec §1)
+    receipt.js          finale "Scontrino" + WhatsApp payoff (spec §2)
+    transition.js       CSS scene-fade helper (spec §4)
+    audioToggle.js      global bgm mute button (spec §4)
   entities/
-    player.js           makePlayer(): physics body + input-driven movement/jump
+    player.js           makePlayer(): physics body + movement/jump + squash & stretch
   scenes/
     loading.js          branded loading screen → menu when assets are ready
     menu.js             title, Start, character cards, audio unlock
-    game.js             plays the current level: camera, respawn, apples, goal
-    finale.js           "Sala da Ballo" cutscene: avatar in all skins + message box
+    game.js             plays a level: camera, parallax, Insert-Coin death, apples, goal
+    finale.js           "Sala da Ballo" cutscene: avatar in all skins + message + receipt
   levels/
     level1.js           "Foresta Incantata" tile map + theme (DATA only)
     level2.js           "Abissi di Corallo" tile map + theme (DATA only)
@@ -87,6 +110,9 @@ tools/
   serve.py              dev server with correct ES-module MIME types
   gen_placeholders.py   Python placeholder generator (stdlib only)
   gen-placeholders.mjs  Node equivalent (optional)
+  test/
+    smoke.mjs           boots the game in real Edge, asserts it reaches the menu
+    features.mjs        deeper checks: audio, movement, Insert Coin, finale receipt
 ```
 
 ## Levels
@@ -145,6 +171,24 @@ widely-shipped emoji; decorative emoji are rendered as their own untinted object
 `k.color()` would darken the glyph). Saved progress remembers the finale, so a reload
 offers **Rivedi il Gran Ballo**; **Nuova partita** starts a fresh run from level 1.
 
-The journey — start screen, four levels, the skin system, saving/resuming, and the finale
-— is now complete. Real art and audio remain the natural next step (drop files into
-`assets/` keeping the same names; only `src/config.js` knows the paths).
+## Polishing & meta-game
+
+A "juiciness" + meta-game layer sits on top of the core game (see `Specifiche_Polishing.md`).
+All DOM/HTML is isolated in `index.html`, `style.css`, and `src/ui/`, so it never touches the
+collision logic in `game.js`:
+
+- **Insert Coin (no game-over).** Touching a hazard/enemy or falling off the world freezes
+  the heroine and shows an HTML overlay; **Inserisci Coin** adds 500 to
+  `localStorage.totaleCoccoline` and restarts the level. The debt is cumulative across the
+  whole gift — it is *not* reset by "Nuova partita".
+- **Finale receipt → WhatsApp.** The Sala da Ballo shows a paper *Scontrino* with the total
+  debt and a **Paga il Debito!** button that opens a pre-filled WhatsApp share (no fixed
+  number; the amount is substituted into the link).
+- **Game feel.** Squash & stretch on jump/land, a confetti burst on every pickup, and a
+  two-layer parallax backdrop (0.2× / 0.5× the camera speed).
+- **Quality of life.** A CSS fade between scenes, an always-on **🔊 / 🔇** audio toggle
+  (top-right, choice persisted), and instant press feedback on the touch buttons.
+
+The core journey plus this polishing layer are complete. Real art and audio remain the
+natural next step (drop files into `assets/` keeping the same names; only `src/config.js`
+knows the paths).
