@@ -15,18 +15,7 @@ import { fadeToScene } from "../ui/transition.js";
 import { hideInsertCoin } from "../ui/insertCoin.js";
 import { hideReceipt } from "../ui/receipt.js";
 import { sfx } from "../sfx.js";
-
-// Tracks whether the menu music has been started, so we only call play() once on the
-// first user gesture (the audio-context unlock).
-let audioUnlocked = false;
-
-function unlockAudio() {
-  if (audioUnlocked) return;
-  audioUnlocked = true;
-  // Playing inside a click/tap handler resumes the AudioContext (iOS policy) and
-  // starts the looping menu track.
-  k.play("menu-bgm", { loop: true, volume: 0.6 });
-}
+import { playBgm } from "../audio.js";
 
 // A reusable rounded button. Returns the root game object.
 function makeButton(parent, { x, y, w, h, label, onClick, base = PALETTE.gold, text = PALETTE.deepBlue }) {
@@ -64,6 +53,11 @@ export function registerMenuScene() {
     // Defensive: clear any DOM overlay left over from gameplay / the finale.
     hideInsertCoin();
     hideReceipt();
+
+    // Resume the gentle menu track when we return here with audio already unlocked. On the
+    // very first load the AudioContext is still locked, so this no-ops until the first click
+    // (the click handlers below start it within the user gesture browsers require).
+    playBgm("menu-bgm", 0.4);
 
     // Soft fairy-tale backdrop.
     k.add([k.rect(GAME_W, GAME_H), k.pos(0, 0), k.color(...PALETTE.lilac)]);
@@ -107,6 +101,7 @@ export function registerMenuScene() {
     const resumeFinale = savedLevel >= MAX_LEVEL;
 
     const openChooser = () => {
+      playBgm("menu-bgm", 0.4); // first gesture → unlock + start the menu track during selection
       startLayer.hidden = true;
       chooserLayer.hidden = false;
       chooserLayer.opacity = 1;
@@ -122,7 +117,8 @@ export function registerMenuScene() {
         h: 90,
         label: resumeFinale ? "↻  Rivedi il Gran Ballo" : `↻  Riprendi · Livello ${savedLevel}`,
         onClick: () => {
-          unlockAudio(); // first user gesture -> audio context unlocked
+          // Start the destination's track within this gesture (unlocks the AudioContext).
+          playBgm(resumeFinale ? "menu-bgm" : "game-bgm", resumeFinale ? 0.34 : 0.32);
           sfx("select");
           fadeToScene(() => k.go(resumeFinale ? "finale" : "game")); // keeps char + level
         },
@@ -183,12 +179,12 @@ export function registerMenuScene() {
         "card",
       ]);
 
-      // Character placeholder sprite, scaled up from the 64x64 source.
+      // Character sprite (64×96), sized to sit in the upper half of the card.
       card.add([
         k.sprite(char.sprite),
         k.anchor("center"),
-        k.pos(0, -90),
-        k.scale(2.4),
+        k.pos(0, -86),
+        k.scale(1.7),
       ]);
 
       card.add([
@@ -226,7 +222,7 @@ export function registerMenuScene() {
         if (!chooserActive) return; // ignore the click that opened the chooser
         setSelectedCharacter(char.id);
         setCurrentLevel(1);   // "Nuova partita" always begins the journey from level 1
-        unlockAudio();        // first user gesture -> audio context unlocked
+        playBgm("game-bgm", 0.32); // switch to the gameplay track within this gesture
         sfx("select");
         fadeToScene(() => k.go("game"));
       });

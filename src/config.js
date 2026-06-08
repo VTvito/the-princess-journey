@@ -105,7 +105,7 @@ export const FINALE = {
 export const PHYSICS = {
   GRAVITY: 1800,    // downward acceleration (px/s²)
   MOVE_SPEED: 320,  // horizontal run speed (px/s)
-  JUMP_FORCE: 780,  // initial upward velocity on jump (px/s)
+  JUMP_FORCE: 730,  // initial upward velocity on jump (px/s); a snappy hop that clears thorns + 2-cell ravines without overshooting
 };
 
 // Asset manifest — the swap point. Replace files in /assets and, if an extension
@@ -116,16 +116,19 @@ export const ASSETS = {
     sognatrice: "assets/sprites/sognatrice.png",
     avventuriera: "assets/sprites/avventuriera.png",
     logo: "assets/sprites/logo.png",
-    // Skin layers (spec §3) — same 64×64 transparent canvas, overlaid on the base body.
+    // Skin layers (spec §3) — same 64×96 transparent canvas, overlaid on the base body.
     skirt: "assets/sprites/skirt.png",
     bodice: "assets/sprites/bodice.png",
     necklace: "assets/sprites/necklace.png",
     crown: "assets/sprites/crown.png",
   },
   sounds: {
+    // Background music, played on the Music bus (src/audio.js). Menu = gentle waltz,
+    // gameplay = a softer, airier loop. The 🎵 toggle mutes these independently of SFX.
     "menu-bgm": "assets/audio/menu-bgm.wav",
-    // Gameplay SFX (spec §3/§4) — synthesized placeholders, played via src/sfx.js so the
-    // global 🔊/🔇 toggle mutes them. Swap the files keeping these keys.
+    "game-bgm": "assets/audio/game-bgm.wav",
+    // Gameplay SFX (spec §3/§4) — synthesized, played via src/sfx.js on the SFX bus so the
+    // 🔊 toggle mutes them independently of the music. Swap the files keeping these keys.
     jump: "assets/audio/jump.wav",
     collect: "assets/audio/collect.wav",
     coin: "assets/audio/coin.wav",

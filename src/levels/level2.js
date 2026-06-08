@@ -37,11 +37,11 @@ export const LEVEL_2 = {
     "", // 1
     "", // 2
     "", // 3
-    "               o             o          ", // 4  high pearls
-    "               ==            ==         ", // 5  upper platforms (stair step)
-    "     o              o                   ", // 6  mid pearls
-    "    ===  o     ===   o      ===         ", // 7  platforms + pearls
-    "  @    c   ^        c   ^     ^    c  > ", // 8  spawn, crabs, urchins, goal
+    "", // 4
+    "", // 5
+    "      o             o           o", // 6  pearls (grabbed mid-jump)
+    "          o             o         o", // 7  pearls along the lane
+    "  @   ^            c           ^     >", // 8  spawn, urchin, crab, urchin, goal
     "============  ============  ============", // 9  coral floor (gaps = ravines)
     "============  ============  ============", // 10 coral floor
   ],

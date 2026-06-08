@@ -37,19 +37,32 @@ try {
   );
   check("boots to menu", true);
 
-  // --- §4 Audio toggle: mutes + unmutes, icon flips, choice persists ---
-  await page.click("#audio-toggle");
-  const m1 = await page.evaluate(() => ({
+  // --- §4 Audio: independent Music + SFX buses flip, reflect their icon/state, persist ---
+  await page.click("#audio-toggle"); // SFX → off
+  const s1 = await page.evaluate(() => ({
     icon: document.getElementById("audio-toggle").textContent,
-    ls: localStorage.getItem("pj.muted"),
+    ls: localStorage.getItem("pj.sfx"),
   }));
-  check("audio toggle → muted", m1.icon.includes("🔇") && m1.ls === "1", JSON.stringify(m1));
-  await page.click("#audio-toggle");
-  const m2 = await page.evaluate(() => ({
+  check("sfx toggle → off", s1.icon.includes("🔇") && s1.ls === "0", JSON.stringify(s1));
+  await page.click("#audio-toggle"); // SFX → on
+  const s2 = await page.evaluate(() => ({
     icon: document.getElementById("audio-toggle").textContent,
-    ls: localStorage.getItem("pj.muted"),
+    ls: localStorage.getItem("pj.sfx"),
   }));
-  check("audio toggle → unmuted", m2.icon.includes("🔊") && m2.ls === "0", JSON.stringify(m2));
+  check("sfx toggle → on", s2.icon.includes("🔊") && s2.ls === "1", JSON.stringify(s2));
+
+  await page.click("#music-toggle"); // Music → off (🎵 dims; glyph stays the same)
+  const mu1 = await page.evaluate(() => ({
+    muted: document.getElementById("music-toggle").classList.contains("is-muted"),
+    ls: localStorage.getItem("pj.music"),
+  }));
+  check("music toggle → off", mu1.muted && mu1.ls === "0", JSON.stringify(mu1));
+  await page.click("#music-toggle"); // Music → on
+  const mu2 = await page.evaluate(() => ({
+    muted: document.getElementById("music-toggle").classList.contains("is-muted"),
+    ls: localStorage.getItem("pj.music"),
+  }));
+  check("music toggle → on", !mu2.muted && mu2.ls === "1", JSON.stringify(mu2));
 
   // --- Enter gameplay (force the scene; char defaults to the first heroine) ---
   await page.evaluate(() => window.__pj.k.go("game"));

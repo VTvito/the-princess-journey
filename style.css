@@ -133,12 +133,13 @@ body {
   }
 }
 
-/* --- Global audio toggle (spec §4) ------------------------------------------
-   Top-right circular button, same translucent style as the touch controls. */
-#audio-toggle {
+/* --- Audio toggles (spec §4) ------------------------------------------------
+   Two top-right circular buttons (Music 🎵 + SFX 🔊), same translucent style as the
+   touch controls. #music-toggle sits just left of #audio-toggle. */
+#audio-toggle,
+#music-toggle {
   position: fixed;
   top: 16px;
-  right: 16px;
   width: 54px;
   height: 54px;
   border: none;
@@ -155,16 +156,25 @@ body {
   justify-content: center;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.08s ease, background 0.12s ease;
+  transition: transform 0.08s ease, background 0.12s ease, opacity 0.12s ease;
 }
-#audio-toggle:hover {
+#audio-toggle {
+  right: 16px;
+}
+#music-toggle {
+  right: 80px; /* one button-width + gap to the left of the SFX toggle */
+}
+#audio-toggle:hover,
+#music-toggle:hover {
   background: rgba(38, 50, 92, 0.75);
 }
-#audio-toggle:active {
+#audio-toggle:active,
+#music-toggle:active {
   transform: scale(0.92);
 }
-#audio-toggle.is-muted {
-  opacity: 0.85;
+#audio-toggle.is-muted,
+#music-toggle.is-muted {
+  opacity: 0.4; /* clearly "off" — and the only cue for 🎵, whose glyph doesn't change */
 }
 
 /* --- Shared DOM overlays (Insert Coin §1, Receipt §2) -----------------------

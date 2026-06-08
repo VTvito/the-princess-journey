@@ -25,6 +25,7 @@ import { hideReceipt } from "../ui/receipt.js";
 import { fadeToScene } from "../ui/transition.js";
 import { confettiBurst } from "../juice.js";
 import { sfx } from "../sfx.js";
+import { playBgm } from "../audio.js";
 
 // Camera helper — Kaplay renamed cam setters across versions; support both.
 function setCam(p) {
@@ -38,6 +39,12 @@ export function registerGameScene() {
     hideInsertCoin();
     hideReceipt();
 
+    // Dev autoplay hook (tools/test/play.mjs): reset the per-level goal flag on entry.
+    // `deaths` is cumulative across retries (the bot zeroes it before a run). No-op off
+    // localhost, where window.__pj is never attached (see main.js).
+    const dbg = (typeof window !== "undefined" && window.__pj && window.__pj.debug) || null;
+    if (dbg) dbg.reachedGoal = false;
+
     const charId = getSelectedCharacter();
     const char = CHARACTERS.find((c) => c.id === charId) || CHARACTERS[0];
     const level = getCurrentLevel();
@@ -49,6 +56,7 @@ export function registerGameScene() {
     k.setGravity(PHYSICS.GRAVITY);
     resetInput(); // no direction carried in from the menu
     bindKeyboard(); // scene-scoped; touch buttons were bound once at startup
+    playBgm("game-bgm", 0.32); // gameplay music (idempotent: a level restart won't restart it)
 
     drawBackground(theme);
 
@@ -76,6 +84,7 @@ export function registerGameScene() {
     function die() {
       if (finished || dead) return;
       dead = true;
+      if (dbg) dbg.deaths += 1;
       player.paused = true; // freeze the heroine behind the overlay
       sfx("oops"); // gentle "you slipped" cue (no harsh game-over — spec §1)
       resetInput();
@@ -136,6 +145,7 @@ export function registerGameScene() {
     player.onCollide("goal", () => {
       if (finished || dead) return;
       finished = true;
+      if (dbg) dbg.reachedGoal = true;
       sfx("goal"); // triumphant arpeggio on clearing the level
       resetInput();
       const reward = skinUnlockedBy(level);

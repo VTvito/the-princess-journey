@@ -75,86 +75,137 @@ function encodePNG(width, height, pixels) {
   ]);
 }
 
-// Draws a filled circle of `color` ([r,g,b]) on a transparent canvas.
-function makeSpritePixels(size, color) {
-  const px = new Uint8Array(size * size * 4); // all zero = transparent
-  const cx = (size - 1) / 2;
-  const cy = (size - 1) / 2;
-  const r = size / 2 - 2;
-  for (let y = 0; y < size; y++) {
-    for (let x = 0; x < size; x++) {
+// ---------------------------------------------------------------------------
+// Sprite drawing — a tiny raster toolkit on a width×height RGBA buffer, used to
+// compose simple-but-readable heroines (head, hair, dress, limbs) instead of flat
+// discs. Heroines and their clothing skins share ONE canvas size so the skin layers
+// (added as child sprites in src/entities/player.js) line up at any scale.
+// ---------------------------------------------------------------------------
+const SPRITE_W = 64;
+const SPRITE_H = 96; // taller than wide so the heroine reads as a character, not a ball
+
+function blank(w, h) {
+  return new Uint8Array(w * h * 4); // all zero = transparent
+}
+function pset(buf, w, x, y, color, a = 255) {
+  x = Math.round(x);
+  y = Math.round(y);
+  if (x < 0 || y < 0 || x >= w) return;
+  const i = (y * w + x) * 4;
+  if (i < 0 || i + 3 >= buf.length) return;
+  buf[i] = color[0];
+  buf[i + 1] = color[1];
+  buf[i + 2] = color[2];
+  buf[i + 3] = a;
+}
+function fillRect(buf, w, x0, y0, x1, y1, color, a = 255) {
+  for (let y = Math.round(y0); y < Math.round(y1); y++)
+    for (let x = Math.round(x0); x < Math.round(x1); x++) pset(buf, w, x, y, color, a);
+}
+function fillDisc(buf, w, cx, cy, r, color, a = 255) {
+  for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++)
+    for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
       const dx = x - cx;
       const dy = y - cy;
-      if (dx * dx + dy * dy <= r * r) {
-        const i = (y * size + x) * 4;
-        px[i] = color[0];
-        px[i + 1] = color[1];
-        px[i + 2] = color[2];
-        px[i + 3] = 255;
-      }
+      if (dx * dx + dy * dy <= r * r) pset(buf, w, x, y, color, a);
     }
+}
+// Vertical trapezoid centred on cx: half-width eases halfTop→halfBot over yTop→yBot.
+function fillTrap(buf, w, yTop, yBot, cx, halfTop, halfBot, color, a = 255) {
+  for (let y = Math.round(yTop); y < Math.round(yBot); y++) {
+    const f = (y - yTop) / Math.max(1, yBot - yTop);
+    const half = halfTop + (halfBot - halfTop) * f;
+    fillRect(buf, w, cx - half, y, cx + half + 1, y + 1, color, a);
   }
-  return px;
+}
+const darken = (c, f = 0.82) => c.map((v) => Math.round(v * f));
+
+const SKIN = [243, 207, 178]; // shared incarnato
+const SHOE = [70, 54, 70];
+const EYE = [44, 36, 50];
+
+// Compose one heroine on a transparent SPRITE_W×SPRITE_H canvas. `hair`/`dress` are RGB;
+// `hairLen` sets how far the locks fall (style cue per character).
+function makeHeroine({ hair, dress, hairLen = 52, skin = SKIN }) {
+  const w = SPRITE_W;
+  const h = SPRITE_H;
+  const cx = w / 2;
+  const buf = blank(w, h);
+  const dress2 = darken(dress);
+  // Hair behind the head + locks falling past the shoulders.
+  fillDisc(buf, w, cx, 23, 20, hair);
+  fillRect(buf, w, cx - 17, 23, cx + 17, hairLen, hair);
+  // Dress (chest → hem) with a darker hem band.
+  fillTrap(buf, w, 47, 86, cx, 10, 22, dress);
+  fillTrap(buf, w, 80, 86, cx, 22, 22, dress2);
+  // Sleeves + hands.
+  fillRect(buf, w, cx - 22, 50, cx - 13, 70, dress);
+  fillRect(buf, w, cx + 13, 50, cx + 22, 70, dress);
+  fillDisc(buf, w, cx - 18, 71, 4, skin);
+  fillDisc(buf, w, cx + 18, 71, 4, skin);
+  // Legs + shoes.
+  fillRect(buf, w, cx - 7, 84, cx - 1, 92, skin);
+  fillRect(buf, w, cx + 1, 84, cx + 7, 92, skin);
+  fillRect(buf, w, cx - 8, 91, cx - 0.5, 96, SHOE);
+  fillRect(buf, w, cx + 0.5, 91, cx + 8, 96, SHOE);
+  // Neck + face.
+  fillRect(buf, w, cx - 4, 38, cx + 4, 46, skin);
+  fillDisc(buf, w, cx, 28, 15, skin);
+  // Hair fringe over the forehead + side framing of the face.
+  fillTrap(buf, w, 13, 24, cx, 16, 13, hair);
+  fillRect(buf, w, cx - 16, 22, cx - 11, 40, hair);
+  fillRect(buf, w, cx + 11, 22, cx + 16, 40, hair);
+  // Eyes, blush, a small smile.
+  fillDisc(buf, w, cx - 6, 29, 2.6, EYE);
+  fillDisc(buf, w, cx + 6, 29, 2.6, EYE);
+  fillDisc(buf, w, cx - 9, 34, 2.3, [233, 150, 160], 150);
+  fillDisc(buf, w, cx + 9, 34, 2.3, [233, 150, 160], 150);
+  fillRect(buf, w, cx - 2, 35, cx + 3, 36, [176, 88, 92]);
+  return buf;
 }
 
-function setPx(px, size, x, y, color, alpha = 255) {
-  if (x < 0 || x >= size || y < 0 || y >= size) return;
-  const i = (y * size + x) * 4;
-  px[i] = color[0];
-  px[i + 1] = color[1];
-  px[i + 2] = color[2];
-  px[i + 3] = alpha;
-}
-
-// Transparent canvas with one filled rectangular region [x0,x1) x [y0,y1).
-function makeRectPixels(size, color, x0, y0, x1, y1, alpha = 255) {
-  const px = new Uint8Array(size * size * 4);
-  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) setPx(px, size, x, y, color, alpha);
-  return px;
-}
-
-// A trapezoid (narrow waist, wide hem) — the "Gonna Reale" layer.
-function makeSkirtPixels(size, color) {
-  const px = new Uint8Array(size * size * 4);
-  const y0 = 36, y1 = 60, topHalf = 8, botHalf = 26;
-  const cx = (size - 1) / 2;
-  for (let y = y0; y < y1; y++) {
-    const f = (y - y0) / (y1 - y0);
-    const half = topHalf + (botHalf - topHalf) * f;
-    for (let x = 0; x < size; x++) if (Math.abs(x - cx) <= half) setPx(px, size, x, y, color);
+// Clothing skins (spec §3) — each on the same canvas, positioned to overlay the base body.
+function makeSkin(kind, color) {
+  const w = SPRITE_W;
+  const cx = w / 2;
+  const buf = blank(w, SPRITE_H);
+  if (kind === "skirt") {
+    fillTrap(buf, w, 63, 90, cx, 11, 27, color);
+    fillTrap(buf, w, 85, 90, cx, 27, 27, darken(color, 0.85));
+  } else if (kind === "bodice") {
+    fillTrap(buf, w, 47, 67, cx, 10, 14, color);
+  } else if (kind === "necklace") {
+    fillRect(buf, w, cx - 7, 44, cx + 7, 47, color);
+    fillDisc(buf, w, cx, 49, 2.6, color);
+  } else if (kind === "crown") {
+    fillRect(buf, w, cx - 12, 8, cx + 12, 13, color);
+    for (const off of [-11, -3.5, 4]) fillTrap(buf, w, 1, 8, cx + off + 3.5, 0.5, 3.5, color);
   }
-  return px;
+  return buf;
+}
+
+// Title mark: a small gold crown emblem (ASSETS.sprites.logo).
+function makeLogo() {
+  const w = SPRITE_W;
+  const cx = w / 2;
+  const gold = [212, 175, 55];
+  const gem = [235, 220, 150];
+  const buf = blank(w, SPRITE_H);
+  fillRect(buf, w, cx - 20, 52, cx + 20, 64, gold);
+  for (const off of [-18, -6, 6]) fillTrap(buf, w, 30, 52, cx + off + 6, 1, 6, gold);
+  fillDisc(buf, w, cx - 12, 30, 3, gem);
+  fillDisc(buf, w, cx, 26, 3, gem);
+  fillDisc(buf, w, cx + 12, 30, 3, gem);
+  return buf;
 }
 
 // ---------------------------------------------------------------------------
-// WAV encoding (16-bit PCM mono) — a soft fading sine tone as a music placeholder.
+// Music — gentle, looping background tracks composed from the same tone() synth as the
+// SFX (see buildMenuMusic / buildGameMusic below the SFX section). The notes are drawn from
+// a pentatonic scale so they stay consonant, with soft envelopes and low volume so the loop
+// is pleasant rather than a droning tone. Encoded to WAV via encodeWav(). (This replaces the
+// old single-sine "menu-bgm" placeholder, which was the source of the grating menu drone.)
 // ---------------------------------------------------------------------------
-function makeWav({ seconds = 2, sampleRate = 22050, freq = 440 } = {}) {
-  const n = Math.floor(seconds * sampleRate);
-  const data = Buffer.alloc(n * 2);
-  for (let i = 0; i < n; i++) {
-    const t = i / sampleRate;
-    const env = 0.25 * Math.sin((Math.PI * i) / n); // fade in/out, gentle volume
-    const sample = Math.sin(2 * Math.PI * freq * t) * env;
-    data.writeInt16LE(Math.max(-1, Math.min(1, sample)) * 0x7fff, i * 2);
-  }
-
-  const header = Buffer.alloc(44);
-  header.write("RIFF", 0, "ascii");
-  header.writeUInt32LE(36 + data.length, 4);
-  header.write("WAVE", 8, "ascii");
-  header.write("fmt ", 12, "ascii");
-  header.writeUInt32LE(16, 16); // PCM chunk size
-  header.writeUInt16LE(1, 20); // PCM format
-  header.writeUInt16LE(1, 22); // mono
-  header.writeUInt32LE(sampleRate, 24);
-  header.writeUInt32LE(sampleRate * 2, 28); // byte rate
-  header.writeUInt16LE(2, 32); // block align
-  header.writeUInt16LE(16, 34); // bits per sample
-  header.write("data", 36, "ascii");
-  header.writeUInt32LE(data.length, 40);
-  return Buffer.concat([header, data]);
-}
 
 // ---------------------------------------------------------------------------
 // Sound effects — tiny synthesized WAVs (mirrors tools/gen_placeholders.py). Simple
@@ -237,6 +288,52 @@ function buildSfx() {
   };
 }
 
+// --- Background music (pentatonic → always consonant; soft + low for a gentle loop) -------
+const NOTE = {
+  C3: 130.81, E3: 164.81, G3: 196.0, A3: 220.0,
+  E4: 329.63, G4: 392.0, A4: 440.0,
+  C5: 523.25, D5: 587.33, E5: 659.25,
+};
+
+// Menu: a light music-box waltz over a soft low bass (~13s loop).
+function buildMenuMusic() {
+  const b = 0.4; // seconds per beat
+  const N = NOTE;
+  const m = (f, beats = 1) => tone(f, b * beats, { vol: 0.5, wave: "sine", decay: 2.6 });
+  const bass = (f, beats) => tone(f, b * beats, { vol: 0.3, wave: "tri", decay: 0.8 });
+  const melody = seq(
+    m(N.G4), m(N.C5), m(N.E5), m(N.D5),
+    m(N.C5), m(N.E5), m(N.G4), m(N.A4),
+    m(N.G4), m(N.A4), m(N.C5), m(N.D5),
+    m(N.E5, 2), m(N.D5, 2),
+    m(N.C5), m(N.A4), m(N.G4), m(N.E4),
+    m(N.G4), m(N.C5), m(N.A4), m(N.G4),
+    m(N.E4), m(N.G4), m(N.A4), m(N.C5),
+    m(N.G4, 2), m(0, 2),
+  );
+  const bassline = seq(
+    bass(N.C3, 4), bass(N.A3, 4), bass(N.G3, 4), bass(N.E3, 4),
+    bass(N.C3, 4), bass(N.G3, 4), bass(N.A3, 4), bass(N.G3, 4),
+  );
+  return normalize(mix(melody, bassline), 0.62);
+}
+
+// Gameplay: a slower, sparser, airier loop that stays out of the way (~26s loop).
+function buildGameMusic() {
+  const b = 0.8;
+  const N = NOTE;
+  const lead = (f, beats = 2) => tone(f, b * beats, { vol: 0.4, wave: "sine", decay: 1.1 });
+  const pad = (f, beats) => tone(f, b * beats, { vol: 0.2, wave: "tri", decay: 0.5 });
+  const melody = seq(
+    lead(N.C5), lead(N.G4), lead(N.A4), lead(N.E5),
+    lead(N.D5), lead(N.C5), lead(N.G4), lead(N.A4),
+    lead(N.E4), lead(N.G4), lead(N.C5), lead(N.D5),
+    lead(N.E5), lead(N.D5), lead(N.C5, 4),
+  );
+  const padline = seq(pad(N.C3, 8), pad(N.A3, 8), pad(N.E3, 8), pad(N.G3, 8));
+  return normalize(mix(melody, padline), 0.5);
+}
+
 function encodeWav(samples, sampleRate = SFX_RATE) {
   const data = Buffer.alloc(samples.length * 2);
   for (let i = 0; i < samples.length; i++) {
@@ -265,36 +362,38 @@ function encodeWav(samples, sampleRate = SFX_RATE) {
 mkdirSync(SPRITES_DIR, { recursive: true });
 mkdirSync(AUDIO_DIR, { recursive: true });
 
-const SPRITES = [
-  { name: "anna.png", color: [167, 199, 231] },         // azzurro/lilla (piumino)
-  { name: "sognatrice.png", color: [240, 198, 116] },   // warm gold (Belle/Ariel)
-  { name: "avventuriera.png", color: [196, 122, 88] },  // nomad terracotta
-  { name: "logo.png", color: [212, 175, 55] },          // royal gold title mark
+// Heroines (spec §3). `dress` is the signature colour from each character's palette;
+// `hair`/`hairLen` give each a distinct silhouette.
+const HEROINES = [
+  { name: "anna.png", hair: [92, 60, 40], dress: [167, 199, 231], hairLen: 54 }, // castani mossi, piumino carta da zucchero
+  { name: "sognatrice.png", hair: [168, 96, 52], dress: [240, 198, 116], hairLen: 68 }, // rame/oro lunghi (Belle/Ariel)
+  { name: "avventuriera.png", hair: [46, 36, 38], dress: [196, 122, 88], hairLen: 46 }, // scuri, nomade terracotta
 ];
 
-for (const s of SPRITES) {
-  const px = makeSpritePixels(64, s.color);
-  writeFileSync(join(SPRITES_DIR, s.name), encodePNG(64, 64, px));
-  console.log("sprite ->", join("assets", "sprites", s.name));
+for (const c of HEROINES) {
+  writeFileSync(join(SPRITES_DIR, c.name), encodePNG(SPRITE_W, SPRITE_H, makeHeroine(c)));
+  console.log("sprite ->", join("assets", "sprites", c.name));
 }
+writeFileSync(join(SPRITES_DIR, "logo.png"), encodePNG(SPRITE_W, SPRITE_H, makeLogo()));
+console.log("sprite ->", join("assets", "sprites", "logo.png"));
 
-// Skin layers (spec §3): distinct region/colour per layer, drawn on a transparent canvas.
+// Skin layers (spec §3): one transparent overlay per layer, positioned over the body.
 const SKINS = [
   { name: "skirt.png", kind: "skirt", color: [212, 175, 55] },
-  { name: "bodice.png", kind: "rect", color: [231, 150, 173], rect: [18, 24, 46, 38] },
-  { name: "necklace.png", kind: "rect", color: [255, 236, 170], rect: [22, 20, 42, 24] },
-  { name: "crown.png", kind: "rect", color: [212, 175, 55], rect: [20, 4, 44, 14] },
+  { name: "bodice.png", kind: "bodice", color: [231, 150, 173] },
+  { name: "necklace.png", kind: "necklace", color: [255, 236, 170] },
+  { name: "crown.png", kind: "crown", color: [212, 175, 55] },
 ];
 
 for (const s of SKINS) {
-  const px =
-    s.kind === "skirt" ? makeSkirtPixels(64, s.color) : makeRectPixels(64, s.color, ...s.rect);
-  writeFileSync(join(SPRITES_DIR, s.name), encodePNG(64, 64, px));
+  writeFileSync(join(SPRITES_DIR, s.name), encodePNG(SPRITE_W, SPRITE_H, makeSkin(s.kind, s.color)));
   console.log("skin   ->", join("assets", "sprites", s.name));
 }
 
-writeFileSync(join(AUDIO_DIR, "menu-bgm.wav"), makeWav({ seconds: 2, freq: 392 }));
+writeFileSync(join(AUDIO_DIR, "menu-bgm.wav"), encodeWav(buildMenuMusic()));
 console.log("audio  ->", join("assets", "audio", "menu-bgm.wav"));
+writeFileSync(join(AUDIO_DIR, "game-bgm.wav"), encodeWav(buildGameMusic()));
+console.log("audio  ->", join("assets", "audio", "game-bgm.wav"));
 
 for (const [name, samples] of Object.entries(buildSfx())) {
   writeFileSync(join(AUDIO_DIR, `${name}.wav`), encodeWav(normalize(samples)));

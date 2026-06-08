@@ -39,11 +39,11 @@ export const LEVEL_3 = {
     "", // 1
     "", // 2
     "", // 3
-    "               o             o          ", // 4  high lanterns
-    "               ==            ==         ", // 5  upper roof platforms
-    "     f        o     f      o      f     ", // 6  flyers (air) + mid lanterns
-    "    ===  o     ===   o      ===         ", // 7  roof platforms + lanterns
-    "  @        ^                 ^        > ", // 8  spawn, broken-tile spikes, goal
+    "", // 4
+    "", // 5
+    "      o           f f          o", // 6  lanterns + flyers patrolling the open mid-air
+    "          o             o          o", // 7  lanterns along the lane
+    "  @   ^                         ^    >", // 8  spawn, spikes (clear of the flyers' lane), goal
     "============  ============  ============", // 9  rooftop floor (gaps = ravines)
     "============  ============  ============", // 10 rooftop floor
   ],

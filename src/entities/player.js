@@ -7,8 +7,10 @@ import { PHYSICS } from "../config.js";
 import { getInput, consumeJump } from "../controls.js";
 import { sfx } from "../sfx.js";
 
-// Placeholder sprites are 64×64; scale up so the heroine reads at the game's resolution.
-const PLAYER_SCALE = 2;
+// Heroine sprites are 64×96 (taller than wide, drawn by tools/gen-placeholders.mjs).
+// Rendered 1:1; the collider (see k.area below) is inset so the heroine clears the 64px
+// level grid — the oversized 2× collider used to wall her in on every level.
+const PLAYER_SCALE = 1;
 
 /**
  * Layer clothing skins as child sprites on a parent (the player, or the finale avatar).
@@ -37,7 +39,10 @@ export function makePlayer(char, pos, skinKeys = []) {
     k.pos(pos),
     k.anchor("center"),
     k.scale(PLAYER_SCALE),
-    k.area(),
+    // Collider ~40×92: narrower than the 64px art so she fits one-tile gaps and lands
+    // forgivingly, nearly full-height so she still reads as solid. Tuned against the 64px
+    // level grid (see src/levels/*.js) and validated by tools/test/play.mjs.
+    k.area({ scale: k.vec2(0.62, 0.96) }),
     k.body(), // gravity + collisions (k.setGravity is set by the scene)
     "player",
     { facing: 1 }, // 1 = right, -1 = left

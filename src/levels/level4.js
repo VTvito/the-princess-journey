@@ -36,12 +36,12 @@ export const LEVEL_4 = {
     "", // 0
     "", // 1
     "", // 2
-    "      s         s       s        s      ", // 3  stalactites hang from the ceiling
-    "               o             o          ", // 4  high crystals
-    "               ==            ==         ", // 5  upper ice platforms
-    "     o              o                   ", // 6  mid crystals
-    "    ===  o     ===   o      ===         ", // 7  ice platforms + crystals
-    "  @                          ^        > ", // 8  spawn, ice spikes, goal
+    "          s         s         s", // 3  stalactites hang from the ceiling, drop on a timer (one per segment)
+    "", // 4
+    "", // 5
+    "      o                 o         o", // 6  crystals (grabbed mid-jump)
+    "               o         o", // 7  crystals along the lane
+    "  @                                  >", // 8  spawn, goal (the dropping stalactites are the hazard)
     "============  ============  ============", // 9  snowy floor (gaps = ravines)
     "============  ============  ============", // 10 snowy floor
   ],

@@ -11,9 +11,11 @@
 //   ">"  level goal (end-of-level marker)
 //   " "  empty air  (a "burrone"/ravine is just a gap in the ground rows)
 //
-// The map is 40 cells wide (≈2 screens) and 11 tall (≈one screen high). Layout is tuned
-// for the casual jump arc in config.PHYSICS: 2-cell ravines and one-tile climbs are all
-// comfortably reachable; the two highest apples need a short stair-step via a platform.
+// The map is 40 cells wide (≈2 screens) and 11 tall (≈one screen high). The heroine is
+// ~1.5 cells tall, so her running lane (rows 8–9) is kept clear of overhead solids — the
+// only platforms are the ground. Collectibles float at rows 6–7 and are grabbed mid-jump.
+// Hazards sit one-per-segment, well clear of the ravine edges so a hazard-hop never
+// overshoots into a gap (tuned for the snappy arc in config.PHYSICS).
 
 export const LEVEL_1 = {
   id: 1,
@@ -46,11 +48,11 @@ export const LEVEL_1 = {
     "", // 1
     "", // 2
     "", // 3
-    "               o              o         ", // 4  high apples
-    "               ==             ==        ", // 5  upper platforms (stair step)
-    "     o               o                  ", // 6  mid apples
-    "    ===  o     ===      o     ===       ", // 7  reachable platforms + apples
-    "  @    ^          ^^             ^    > ", // 8  spawn, thorns, goal
+    "", // 4
+    "", // 5
+    "      o           o             o", // 6  apples (grabbed mid-jump)
+    "          o             o          o", // 7  apples along the lane
+    "  @   ^           ^             ^    >", // 8  spawn, thorns, goal
     "============  ============  ============", // 9  ground (gaps = ravines)
     "============  ============  ============", // 10 ground
   ],

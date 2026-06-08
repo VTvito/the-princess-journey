@@ -5,15 +5,17 @@ Uses only the Python standard library (no pip installs). Run once:
 
     python tools/gen_placeholders.py
 
-Sprites: 64x64 RGBA PNGs (transparent background, solid color disc) -- the same
-size and transparency the future skin-layering system expects (spec section 3).
-Replace the files in assets/sprites with real art later, keeping the same
-filenames (or update ASSETS in src/config.js).
+Sprites: 64x96 RGBA PNGs (transparent background) -- simple drawn heroines (head, hair,
+dress, limbs) plus matching clothing-skin overlays, all on one canvas so the layers line
+up (spec section 3). Replace the files in assets/sprites with real art later, keeping the
+same filenames (or update ASSETS in src/config.js).
 
-Audio: a short, gentle WAV tone as the menu-music placeholder, plus a set of tiny
-synthesized gameplay SFX (jump / collect / coin / oops / goal / win / select).
-Replace the files in assets/audio later with real sound, keeping the filenames
-(or update ASSETS.sounds in src/config.js if any extension changes).
+Audio: gentle looping background music (a menu waltz + a softer gameplay loop) plus a set
+of tiny synthesized gameplay SFX (jump / collect / coin / oops / goal / win / select).
+Replace the files in assets/audio later with real sound, keeping the filenames (or update
+ASSETS.sounds in src/config.js if any extension changes).
+
+This mirrors tools/gen-placeholders.mjs (the canonical Node version); keep the two in sync.
 """
 
 import math
@@ -49,73 +51,138 @@ def encode_png(width: int, height: int, pixels: bytearray) -> bytes:
     return sig + _png_chunk(b"IHDR", ihdr) + _png_chunk(b"IDAT", idat) + _png_chunk(b"IEND", b"")
 
 
-def make_sprite_pixels(size: int, color) -> bytearray:
-    """Transparent canvas with a filled disc of `color` (r, g, b)."""
-    px = bytearray(size * size * 4)  # zero-filled => fully transparent
-    cx = cy = (size - 1) / 2
-    r = size / 2 - 2
-    r2 = r * r
-    for y in range(size):
-        for x in range(size):
+# --- Sprite drawing: a tiny raster toolkit on a width×height RGBA buffer, used to compose
+# simple-but-readable heroines (head, hair, dress, limbs) instead of flat discs. Heroines and
+# their skins share ONE canvas size so the skin layers line up at any scale. (Mirrors the
+# helpers in tools/gen-placeholders.mjs.)
+SPRITE_W = 64
+SPRITE_H = 96  # taller than wide so the heroine reads as a character, not a ball
+
+SKIN = (243, 207, 178)  # shared incarnato
+SHOE = (70, 54, 70)
+EYE = (44, 36, 50)
+
+
+def blank(w: int, h: int) -> bytearray:
+    return bytearray(w * h * 4)  # zero-filled => fully transparent
+
+
+def pset(buf: bytearray, w: int, x, y, color, a: int = 255) -> None:
+    x, y = round(x), round(y)
+    if x < 0 or y < 0 or x >= w:
+        return
+    i = (y * w + x) * 4
+    if i < 0 or i + 3 >= len(buf):
+        return
+    buf[i], buf[i + 1], buf[i + 2], buf[i + 3] = color[0], color[1], color[2], a
+
+
+def fill_rect(buf, w, x0, y0, x1, y1, color, a: int = 255) -> None:
+    for y in range(round(y0), round(y1)):
+        for x in range(round(x0), round(x1)):
+            pset(buf, w, x, y, color, a)
+
+
+def fill_disc(buf, w, cx, cy, r, color, a: int = 255) -> None:
+    for y in range(math.floor(cy - r), math.ceil(cy + r) + 1):
+        for x in range(math.floor(cx - r), math.ceil(cx + r) + 1):
             dx, dy = x - cx, y - cy
-            if dx * dx + dy * dy <= r2:
-                i = (y * size + x) * 4
-                px[i], px[i + 1], px[i + 2], px[i + 3] = color[0], color[1], color[2], 255
-    return px
+            if dx * dx + dy * dy <= r * r:
+                pset(buf, w, x, y, color, a)
 
 
-def _set(px: bytearray, size: int, x: int, y: int, color, alpha: int = 255) -> None:
-    if 0 <= x < size and 0 <= y < size:
-        i = (y * size + x) * 4
-        px[i], px[i + 1], px[i + 2], px[i + 3] = color[0], color[1], color[2], alpha
+def fill_trap(buf, w, y_top, y_bot, cx, half_top, half_bot, color, a: int = 255) -> None:
+    """Vertical trapezoid centred on cx: half-width eases half_top->half_bot over y_top->y_bot."""
+    for y in range(round(y_top), round(y_bot)):
+        f = (y - y_top) / max(1, y_bot - y_top)
+        half = half_top + (half_bot - half_top) * f
+        fill_rect(buf, w, cx - half, y, cx + half + 1, y + 1, color, a)
 
 
-def make_rect_pixels(size: int, color, x0: int, y0: int, x1: int, y1: int, alpha: int = 255) -> bytearray:
-    """Transparent canvas with one filled rectangular region [x0,x1) x [y0,y1)."""
-    px = bytearray(size * size * 4)
-    for y in range(y0, y1):
-        for x in range(x0, x1):
-            _set(px, size, x, y, color, alpha)
-    return px
+def darken(c, f: float = 0.82):
+    return [round(v * f) for v in c]
 
 
-def make_skirt_pixels(size: int, color) -> bytearray:
-    """A trapezoid (narrow at the waist, wide at the hem) — the 'Gonna Reale' layer."""
-    px = bytearray(size * size * 4)
-    y0, y1, top_half, bot_half = 36, 60, 8, 26
-    cx = (size - 1) / 2
-    for y in range(y0, y1):
-        f = (y - y0) / (y1 - y0)
-        half = top_half + (bot_half - top_half) * f
-        for x in range(size):
-            if abs(x - cx) <= half:
-                _set(px, size, x, y, color)
-    return px
+def make_heroine(hair, dress, hair_len: int = 52, skin=SKIN) -> bytearray:
+    w, h, cx = SPRITE_W, SPRITE_H, SPRITE_W / 2
+    buf = blank(w, h)
+    dress2 = darken(dress)
+    # Hair behind the head + locks falling past the shoulders.
+    fill_disc(buf, w, cx, 23, 20, hair)
+    fill_rect(buf, w, cx - 17, 23, cx + 17, hair_len, hair)
+    # Dress (chest -> hem) with a darker hem band.
+    fill_trap(buf, w, 47, 86, cx, 10, 22, dress)
+    fill_trap(buf, w, 80, 86, cx, 22, 22, dress2)
+    # Sleeves + hands.
+    fill_rect(buf, w, cx - 22, 50, cx - 13, 70, dress)
+    fill_rect(buf, w, cx + 13, 50, cx + 22, 70, dress)
+    fill_disc(buf, w, cx - 18, 71, 4, skin)
+    fill_disc(buf, w, cx + 18, 71, 4, skin)
+    # Legs + shoes.
+    fill_rect(buf, w, cx - 7, 84, cx - 1, 92, skin)
+    fill_rect(buf, w, cx + 1, 84, cx + 7, 92, skin)
+    fill_rect(buf, w, cx - 8, 91, cx - 0.5, 96, SHOE)
+    fill_rect(buf, w, cx + 0.5, 91, cx + 8, 96, SHOE)
+    # Neck + face.
+    fill_rect(buf, w, cx - 4, 38, cx + 4, 46, skin)
+    fill_disc(buf, w, cx, 28, 15, skin)
+    # Hair fringe over the forehead + side framing of the face.
+    fill_trap(buf, w, 13, 24, cx, 16, 13, hair)
+    fill_rect(buf, w, cx - 16, 22, cx - 11, 40, hair)
+    fill_rect(buf, w, cx + 11, 22, cx + 16, 40, hair)
+    # Eyes, blush, a small smile.
+    fill_disc(buf, w, cx - 6, 29, 2.6, EYE)
+    fill_disc(buf, w, cx + 6, 29, 2.6, EYE)
+    fill_disc(buf, w, cx - 9, 34, 2.3, (233, 150, 160), 150)
+    fill_disc(buf, w, cx + 9, 34, 2.3, (233, 150, 160), 150)
+    fill_rect(buf, w, cx - 2, 35, cx + 3, 36, (176, 88, 92))
+    return buf
 
 
-# Skin layers (spec §3): each on its own 64x64 transparent canvas, drawn in a distinct
-# region/colour so the layering is visibly different stacked on the base body disc.
+def make_skin(kind: str, color) -> bytearray:
+    w, cx = SPRITE_W, SPRITE_W / 2
+    buf = blank(w, SPRITE_H)
+    if kind == "skirt":
+        fill_trap(buf, w, 63, 90, cx, 11, 27, color)
+        fill_trap(buf, w, 85, 90, cx, 27, 27, darken(color, 0.85))
+    elif kind == "bodice":
+        fill_trap(buf, w, 47, 67, cx, 10, 14, color)
+    elif kind == "necklace":
+        fill_rect(buf, w, cx - 7, 44, cx + 7, 47, color)
+        fill_disc(buf, w, cx, 49, 2.6, color)
+    elif kind == "crown":
+        fill_rect(buf, w, cx - 12, 8, cx + 12, 13, color)
+        for off in (-11, -3.5, 4):
+            fill_trap(buf, w, 1, 8, cx + off + 3.5, 0.5, 3.5, color)
+    return buf
+
+
+def make_logo() -> bytearray:
+    w, cx = SPRITE_W, SPRITE_W / 2
+    gold, gem = (212, 175, 55), (235, 220, 150)
+    buf = blank(w, SPRITE_H)
+    fill_rect(buf, w, cx - 20, 52, cx + 20, 64, gold)
+    for off in (-18, -6, 6):
+        fill_trap(buf, w, 30, 52, cx + off + 6, 1, 6, gold)
+    fill_disc(buf, w, cx - 12, 30, 3, gem)
+    fill_disc(buf, w, cx, 26, 3, gem)
+    fill_disc(buf, w, cx + 12, 30, 3, gem)
+    return buf
+
+
+# Skin layers (spec §3): each on the same 64x96 transparent canvas, positioned to overlay
+# the base body so the stack (skirt < bodice < necklace < crown) lines up.
 SKINS = [
-    ("skirt.png", "skirt", (212, 175, 55)),       # royal gold trapezoid (lower body)
-    ("bodice.png", "rect", (231, 150, 173), (18, 24, 46, 38)),   # rose torso block
-    ("necklace.png", "rect", (255, 236, 170), (22, 20, 42, 24)), # light band at the neck
-    ("crown.png", "rect", (212, 175, 55), (20, 4, 44, 14)),      # gold block at the top
+    ("skirt.png", "skirt", (212, 175, 55)),
+    ("bodice.png", "bodice", (231, 150, 173)),
+    ("necklace.png", "necklace", (255, 236, 170)),
+    ("crown.png", "crown", (212, 175, 55)),
 ]
 
 
-def make_wav(path: str, seconds: float = 2.0, sample_rate: int = 22050, freq: float = 392.0) -> None:
-    n = int(seconds * sample_rate)
-    frames = bytearray()
-    for i in range(n):
-        t = i / sample_rate
-        env = 0.25 * math.sin(math.pi * i / n)  # gentle fade in/out
-        sample = math.sin(2 * math.pi * freq * t) * env
-        frames.extend(struct.pack("<h", int(max(-1.0, min(1.0, sample)) * 0x7FFF)))
-    with wave.open(path, "wb") as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(sample_rate)
-        w.writeframes(bytes(frames))
+# Background music is composed from the same tone() synth as the SFX -- see
+# build_menu_music / build_game_music below (pentatonic, soft, low-volume loops). This
+# replaces the old single-sine "menu-bgm" placeholder that produced the grating drone.
 
 
 # --- Sound effects (gameplay juiciness) -------------------------------------------
@@ -219,6 +286,57 @@ def build_sfx():
     }
 
 
+# --- Background music (pentatonic -> always consonant; soft + low for a gentle loop) -------
+NOTE = {
+    "C3": 130.81, "E3": 164.81, "G3": 196.0, "A3": 220.0,
+    "E4": 329.63, "G4": 392.0, "A4": 440.0,
+    "C5": 523.25, "D5": 587.33, "E5": 659.25,
+}
+
+
+def build_menu_music():
+    """Menu: a light music-box waltz over a soft low bass (~13s loop)."""
+    b = 0.4  # seconds per beat
+    N = NOTE
+    def m(f, beats=1):
+        return tone(f, b * beats, vol=0.5, wave="sine", decay=2.6)
+    def bass(f, beats):
+        return tone(f, b * beats, vol=0.3, wave="tri", decay=0.8)
+    melody = seq(
+        m(N["G4"]), m(N["C5"]), m(N["E5"]), m(N["D5"]),
+        m(N["C5"]), m(N["E5"]), m(N["G4"]), m(N["A4"]),
+        m(N["G4"]), m(N["A4"]), m(N["C5"]), m(N["D5"]),
+        m(N["E5"], 2), m(N["D5"], 2),
+        m(N["C5"]), m(N["A4"]), m(N["G4"]), m(N["E4"]),
+        m(N["G4"]), m(N["C5"]), m(N["A4"]), m(N["G4"]),
+        m(N["E4"]), m(N["G4"]), m(N["A4"]), m(N["C5"]),
+        m(N["G4"], 2), m(0, 2),
+    )
+    bassline = seq(
+        bass(N["C3"], 4), bass(N["A3"], 4), bass(N["G3"], 4), bass(N["E3"], 4),
+        bass(N["C3"], 4), bass(N["G3"], 4), bass(N["A3"], 4), bass(N["G3"], 4),
+    )
+    return normalize(mix(melody, bassline), 0.62)
+
+
+def build_game_music():
+    """Gameplay: a slower, sparser, airier loop that stays out of the way (~26s loop)."""
+    b = 0.8
+    N = NOTE
+    def lead(f, beats=2):
+        return tone(f, b * beats, vol=0.4, wave="sine", decay=1.1)
+    def pad(f, beats):
+        return tone(f, b * beats, vol=0.2, wave="tri", decay=0.5)
+    melody = seq(
+        lead(N["C5"]), lead(N["G4"]), lead(N["A4"]), lead(N["E5"]),
+        lead(N["D5"]), lead(N["C5"]), lead(N["G4"]), lead(N["A4"]),
+        lead(N["E4"]), lead(N["G4"]), lead(N["C5"]), lead(N["D5"]),
+        lead(N["E5"]), lead(N["D5"]), lead(N["C5"], 4),
+    )
+    padline = seq(pad(N["C3"], 8), pad(N["A3"], 8), pad(N["E3"], 8), pad(N["G3"], 8))
+    return normalize(mix(melody, padline), 0.5)
+
+
 def make_sfx(path: str, samples, sr: int = SFX_RATE) -> None:
     frames = bytearray()
     for s in samples:
@@ -230,11 +348,12 @@ def make_sfx(path: str, samples, sr: int = SFX_RATE) -> None:
         w.writeframes(bytes(frames))
 
 
-SPRITES = [
-    ("anna.png", (167, 199, 231)),        # azzurro/lilla (piumino)
-    ("sognatrice.png", (240, 198, 116)),  # warm gold (Belle/Ariel)
-    ("avventuriera.png", (196, 122, 88)), # nomad terracotta
-    ("logo.png", (212, 175, 55)),         # royal gold title mark
+# Heroines (spec §3): dress = signature palette colour; hair + hair_len give each a distinct
+# silhouette. (The logo is a gold crown emblem, generated separately via make_logo.)
+HEROINES = [
+    ("anna.png", (92, 60, 40), (167, 199, 231), 54),        # castani mossi, piumino carta da zucchero
+    ("sognatrice.png", (168, 96, 52), (240, 198, 116), 68),  # rame/oro lunghi (Belle/Ariel)
+    ("avventuriera.png", (46, 36, 38), (196, 122, 88), 46),  # scuri, nomade terracotta
 ]
 
 
@@ -242,25 +361,25 @@ def main() -> None:
     os.makedirs(SPRITES_DIR, exist_ok=True)
     os.makedirs(AUDIO_DIR, exist_ok=True)
 
-    for name, color in SPRITES:
-        px = make_sprite_pixels(64, color)
+    for name, hair, dress, hair_len in HEROINES:
+        px = make_heroine(hair, dress, hair_len)
         with open(os.path.join(SPRITES_DIR, name), "wb") as f:
-            f.write(encode_png(64, 64, px))
+            f.write(encode_png(SPRITE_W, SPRITE_H, px))
         print("sprite ->", os.path.join("assets", "sprites", name))
+    with open(os.path.join(SPRITES_DIR, "logo.png"), "wb") as f:
+        f.write(encode_png(SPRITE_W, SPRITE_H, make_logo()))
+    print("sprite ->", os.path.join("assets", "sprites", "logo.png"))
 
-    for entry in SKINS:
-        name, kind, color = entry[0], entry[1], entry[2]
-        if kind == "skirt":
-            px = make_skirt_pixels(64, color)
-        else:
-            x0, y0, x1, y1 = entry[3]
-            px = make_rect_pixels(64, color, x0, y0, x1, y1)
+    for name, kind, color in SKINS:
+        px = make_skin(kind, color)
         with open(os.path.join(SPRITES_DIR, name), "wb") as f:
-            f.write(encode_png(64, 64, px))
+            f.write(encode_png(SPRITE_W, SPRITE_H, px))
         print("skin   ->", os.path.join("assets", "sprites", name))
 
-    make_wav(os.path.join(AUDIO_DIR, "menu-bgm.wav"))
+    make_sfx(os.path.join(AUDIO_DIR, "menu-bgm.wav"), build_menu_music())
     print("audio  ->", os.path.join("assets", "audio", "menu-bgm.wav"))
+    make_sfx(os.path.join(AUDIO_DIR, "game-bgm.wav"), build_game_music())
+    print("audio  ->", os.path.join("assets", "audio", "game-bgm.wav"))
 
     for name, samples in build_sfx().items():
         path = os.path.join(AUDIO_DIR, f"{name}.wav")

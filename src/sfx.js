@@ -1,10 +1,11 @@
 // sfx.js — tiny wrapper around k.play for gameplay sound effects (Specifiche_Polishing §3/§4).
-// Every SFX goes through Kaplay's audio, so the global 🔊/🔇 toggle (which sets the master
-// volume via k.setVolume in ui/audioToggle.js) mutes them automatically — no extra wiring.
-// Per-sound base volumes keep the mix balanced against the bgm; the call is wrapped so a
-// not-yet-loaded sound or a still-locked AudioContext can never throw into gameplay.
+// Each cue plays on the SFX bus: its base volume below is scaled by sfxGain() (0 when the
+// 🔊 toggle is off, see src/audio.js), so effects mute independently of the background music.
+// The call is wrapped so a not-yet-loaded sound or a still-locked AudioContext can never
+// throw into gameplay.
 
 import { k } from "./kaplayCtx.js";
+import { sfxGain } from "./audio.js";
 
 // Relative loudness per cue (master mute/▲ is applied globally on top of these).
 const VOL = {
@@ -24,8 +25,10 @@ const VOL = {
  * @returns the playback handle, or null if it couldn't play (failed silently)
  */
 export function sfx(name, opts = {}) {
+  const gain = sfxGain();
+  if (gain <= 0) return null; // SFX bus muted
   try {
-    return k.play(name, { volume: VOL[name] ?? 0.5, ...opts });
+    return k.play(name, { volume: (VOL[name] ?? 0.5) * gain, ...opts });
   } catch {
     return null; // sound not loaded / audio still locked — never break gameplay
   }

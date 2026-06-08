@@ -35,8 +35,9 @@
       <button id="btn-jump" type="button" aria-label="Salto">⤴</button>
     </div>
 
-    <!-- Global audio on/off (top-right). Wired in src/ui/audioToggle.js. -->
-    <button id="audio-toggle" type="button" aria-label="Disattiva audio">🔊</button>
+    <!-- Music + SFX toggles (top-right). Independent buses; wired in src/ui/audioToggle.js. -->
+    <button id="music-toggle" type="button" aria-label="Disattiva musica">🎵</button>
+    <button id="audio-toggle" type="button" aria-label="Disattiva effetti">🔊</button>
 
     <!-- "Insert Coin" death overlay (spec §1). DOM, not Kaplay; shown by
          src/ui/insertCoin.js when the heroine fails. -->

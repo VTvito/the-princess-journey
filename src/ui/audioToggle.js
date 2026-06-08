@@ -1,55 +1,45 @@
-// audioToggle.js — global bgm mute button (Specifiche_Polishing §4).
-//
-// A small DOM button (top-right, in index.html) toggles Kaplay's master volume between
-// on and muted, which affects the currently-looping bgm in real time. The choice persists
-// across reloads. Bound once at startup (like the touch buttons), so it works on every
-// scene.
+// audioToggle.js — the two top-right toggle buttons for the Music and SFX buses
+// (Specifiche_Polishing §4, extended). 🎵 silences the looping background music; 🔊 silences
+// the gameplay sound effects. Each reflects + persists its bus state (src/audio.js) so the
+// choice survives reloads. Bound once at startup (like the touch buttons), so both work on
+// every scene. Markup lives in index.html.
 
-import { k } from "../kaplayCtx.js";
+import { isMusicOn, isSfxOn, setMusicOn, setSfxOn } from "../audio.js";
 
-const MUTE_KEY = "pj.muted";
-let btn = null;
-let muted = false;
+let musicBtn = null;
+let sfxBtn = null;
 
-function readMuted() {
-  try {
-    return window.localStorage.getItem(MUTE_KEY) === "1";
-  } catch {
-    return false;
-  }
-}
-function writeMuted(v) {
-  try {
-    window.localStorage.setItem(MUTE_KEY, v ? "1" : "0");
-  } catch {
-    // no-op — preference just won't persist this session
-  }
+function paintMusic() {
+  if (!musicBtn) return;
+  const on = isMusicOn();
+  musicBtn.classList.toggle("is-muted", !on); // dims the 🎵 when off
+  musicBtn.setAttribute("aria-label", on ? "Disattiva musica" : "Attiva musica");
 }
 
-// Kaplay renamed the master-volume setter across versions; support both.
-function setMasterVolume(v) {
-  if (typeof k.setVolume === "function") k.setVolume(v);
-  else if (typeof k.volume === "function") k.volume(v);
+function paintSfx() {
+  if (!sfxBtn) return;
+  const on = isSfxOn();
+  sfxBtn.textContent = on ? "🔊" : "🔇";
+  sfxBtn.classList.toggle("is-muted", !on);
+  sfxBtn.setAttribute("aria-label", on ? "Disattiva effetti" : "Attiva effetti");
 }
 
-function apply() {
-  setMasterVolume(muted ? 0 : 1);
-  if (btn) {
-    btn.textContent = muted ? "🔇" : "🔊";
-    btn.classList.toggle("is-muted", muted);
-    btn.setAttribute("aria-label", muted ? "Riattiva audio" : "Disattiva audio");
-  }
-}
-
-/** Wire the toggle and apply the saved preference. Call once at startup. */
+/** Wire both toggles and apply the saved preferences. Call once at startup. */
 export function bindAudioToggle() {
-  btn = document.getElementById("audio-toggle");
-  muted = readMuted();
-  apply(); // honour saved preference even before any sound has played
-  if (!btn) return;
-  btn.addEventListener("click", () => {
-    muted = !muted;
-    writeMuted(muted);
-    apply();
-  });
+  musicBtn = document.getElementById("music-toggle");
+  sfxBtn = document.getElementById("audio-toggle");
+  paintMusic();
+  paintSfx();
+  if (musicBtn) {
+    musicBtn.addEventListener("click", () => {
+      setMusicOn(!isMusicOn());
+      paintMusic();
+    });
+  }
+  if (sfxBtn) {
+    sfxBtn.addEventListener("click", () => {
+      setSfxOn(!isSfxOn());
+      paintSfx();
+    });
+  }
 }
