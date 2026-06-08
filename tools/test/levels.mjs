@@ -14,7 +14,7 @@
 //
 // Exit code 0 = pass, 1 = fail. Screenshots are always written.
 
-import { launchBrowser } from "./browser.mjs";
+import { launchBrowser, routeVendorKaplay } from "./browser.mjs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -29,6 +29,7 @@ let failed = false;
 const browser = await launchBrowser();
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  await routeVendorKaplay(page);
   page.on("console", (msg) => {
     if (msg.type() === "error") allErrors.push(`console.error: ${msg.text()}`);
   });

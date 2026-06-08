@@ -33,18 +33,28 @@ export function buildLevel(def) {
       const x = c * TILE;
       const y = r * TILE;
       switch (ch) {
-        case "=":
-          // Solid ground/platform tile + a thin top accent (decorative).
+        case "=": {
+          // Solid tile. Pick a neighbour-aware frame so surfaces read as grassy tops, buried
+          // dirt fill, or floating slabs — then tint the whole sprite with theme.solid (the
+          // atlas frames are neutral grey with baked bevel/texture, so the tint keeps
+          // contrast). Collider (area + static body) is identical to the old rect.
+          const airAbove = (rows[r - 1]?.[c] ?? " ") !== "=";
+          const airBelow = (rows[r + 1]?.[c] ?? " ") !== "=";
+          const frame = airAbove && airBelow ? "platform" : airAbove ? "ground_top" : "ground_fill";
           k.add([
-            k.rect(TILE, TILE),
+            k.sprite(frame),
             k.pos(x, y),
             k.area(),
             k.body({ isStatic: true }),
             k.color(...theme.solid),
             "solid",
           ]);
-          k.add([k.rect(TILE, 7), k.pos(x, y), k.color(...theme.solidTop), k.z(1)]);
+          // Bright grass/snow lip on exposed top surfaces (keeps the faithful two-tone look).
+          if (airAbove) {
+            k.add([k.rect(TILE, 7), k.pos(x, y), k.color(...theme.solidTop), k.z(1)]);
+          }
           break;
+        }
         case "^":
           makeHazard(x, y, TILE, theme);
           break;
@@ -79,31 +89,31 @@ export function buildLevel(def) {
 }
 
 // --- Static hazard (thorns / sea urchins): a low spiky block, tagged "hazard".
+// The collider is the original invisible half-cell rect (identical hitbox + "hazard" tag +
+// top-left pos so the bot's lane probes are unchanged); the spike art is a child sprite,
+// tinted with the theme. The sprite's content occupies its lower ~48px (top is transparent),
+// so anchored to the cell bottom it matches the old spikes' visual extent.
 function makeHazard(x, y, TILE, theme) {
   const topY = y + TILE * 0.5; // sits on the lower half of the cell (on the ground)
-  k.add([
+  const base = k.add([
     k.rect(TILE, TILE * 0.5),
     k.pos(x, topY),
     k.area({ scale: 0.85 }), // slightly forgiving hitbox (casual difficulty)
-    k.color(...theme.hazard),
+    k.opacity(0), // collider-only; the sprite below provides the visuals
     k.z(2),
     "hazard",
   ]);
-  for (let i = 0; i < 4; i++) {
-    k.add([
-      k.polygon([k.vec2(0, 0), k.vec2(16, 0), k.vec2(8, -16)]),
-      k.pos(x + i * 16, topY),
-      k.color(...theme.hazardTip),
-      k.z(2),
-    ]);
-  }
+  base.add([k.sprite("hazard_spike"), k.anchor("bot"), k.color(...theme.hazard), k.pos(TILE / 2, TILE / 2)]);
 }
 
 // --- Collectible (golden apple / pearl): a gently bobbing pickup, tagged "collectible".
 function makeCollectible(cx, cy, theme) {
+  // Collider-only invisible body: keeps the exact circle hitbox + "collectible" tag + bob
+  // state, so the pickup feel and the autoplay bot are unchanged. The art is a per-theme
+  // child sprite (apple/pearl/lantern/crystal), with the soft aura kept as juice.
   const item = k.add([
     k.circle(13),
-    k.color(...theme.collectible),
+    k.opacity(0),
     k.pos(cx, cy),
     k.anchor("center"),
     k.area({ scale: 0.95 }),
@@ -111,44 +121,38 @@ function makeCollectible(cx, cy, theme) {
     "collectible",
     { baseY: cy, t: k.rand(0, Math.PI * 2) },
   ]);
-  // Soft themed aura so the pickup reads as precious (spec §3 juiciness). Pure decoration:
-  // it carries no area(), so the pickup hitbox is unchanged. Low opacity keeps the gem crisp
-  // regardless of child draw order (a faint bloom even if it renders in front of the body).
+  // Soft themed aura so the pickup reads as precious (spec §3 juiciness). Pure decoration.
   const halo = item.add([
     k.circle(20),
     k.color(...(theme.collectibleGlow || PALETTE.gold)),
     k.anchor("center"),
     k.pos(0, 0),
     k.opacity(0.16),
-    k.z(2), // behind the body (z3) where child z is honoured
+    k.z(2), // behind the gem sprite (z3) where child z is honoured
   ]);
-  // Small highlight so a pale pearl still reads as a sphere.
-  item.add([k.circle(4), k.color(...(theme.collectibleAccent || PALETTE.cream)), k.pos(-4, -4)]);
-  // Forest apples get a stem + leaf; other themes skip it.
-  if (theme.leaf) {
-    item.add([k.rect(3, 7), k.color(96, 64, 42), k.anchor("bot"), k.pos(0, -11)]);
-    item.add([
-      k.polygon([k.vec2(0, 0), k.vec2(11, -2), k.vec2(2, -8)]),
-      k.color(...theme.leaf),
-      k.pos(1, -13),
-    ]);
-  }
+  const sprite = item.add([
+    k.sprite(theme.collectibleSprite || "apple"),
+    k.anchor("center"),
+    k.pos(0, 0),
+    k.rotate(0), // enables the gentle sway below
+    k.z(3),
+  ]);
   item.onUpdate(() => {
     item.t += k.dt() * 3;
-    item.pos.y = item.baseY + Math.sin(item.t) * 4;
-    halo.opacity = 0.12 + 0.1 * (0.5 + 0.5 * Math.sin(item.t * 1.6)); // gentle ~0.12..0.22 pulse
+    item.pos.y = item.baseY + Math.sin(item.t) * 5; // a touch more bob than before (spec §4)
+    sprite.angle = Math.sin(item.t * 0.8) * 6; // gentle sway
+    halo.opacity = 0.12 + 0.12 * (0.5 + 0.5 * Math.sin(item.t * 1.6)); // gentle flicker
   });
   return item;
 }
 
 // --- Crab enemy: patrols horizontally, tagged "enemy". Primitive art (no asset needed).
 function makeCrab(cx, cy, theme) {
-  const body = theme.enemy || [196, 64, 58];
-  const claw = theme.enemyAccent || [230, 110, 96];
-  // The shell is on the parent so area() infers the collider shape (no k.Rect needed).
+  // Collider-only invisible body (same 40×24 hitbox + "enemy" tag + patrol state); the crab
+  // art is a child sprite. Movement logic is unchanged so the bot reads it identically.
   const crab = k.add([
     k.rect(40, 24, { radius: 11 }),
-    k.color(...body),
+    k.opacity(0),
     k.pos(cx, cy),
     k.anchor("center"),
     k.area({ scale: 0.92 }),
@@ -156,19 +160,13 @@ function makeCrab(cx, cy, theme) {
     "enemy",
     { baseX: cx, dir: 1 },
   ]);
-  // Eyes.
-  crab.add([k.circle(3), k.color(255, 255, 255), k.anchor("center"), k.pos(-6, -9)]);
-  crab.add([k.circle(3), k.color(255, 255, 255), k.anchor("center"), k.pos(6, -9)]);
-  crab.add([k.circle(1.5), k.color(20, 20, 20), k.anchor("center"), k.pos(-6, -9)]);
-  crab.add([k.circle(1.5), k.color(20, 20, 20), k.anchor("center"), k.pos(6, -9)]);
-  // Claws.
-  crab.add([k.circle(6), k.color(...claw), k.anchor("center"), k.pos(-22, 2)]);
-  crab.add([k.circle(6), k.color(...claw), k.anchor("center"), k.pos(22, 2)]);
+  const art = crab.add([k.sprite("crab"), k.anchor("center"), k.pos(0, 0)]);
 
   crab.onUpdate(() => {
     crab.move(crab.dir * ENEMIES.CRAB_SPEED, 0);
     if (crab.pos.x > crab.baseX + ENEMIES.CRAB_RANGE) crab.dir = -1;
     else if (crab.pos.x < crab.baseX - ENEMIES.CRAB_RANGE) crab.dir = 1;
+    art.flipX = crab.dir < 0; // face travel direction
   });
   return crab;
 }
@@ -176,12 +174,11 @@ function makeCrab(cx, cy, theme) {
 // --- Flyer enemy (ostacolo volante, Livello 3): patrols horizontally in the air with a
 // gentle vertical bob. Tagged "enemy" so the scene respawns the player on contact.
 function makeFlyer(cx, cy, theme) {
-  const body = theme.enemy || [48, 44, 64];
-  const wing = theme.enemyAccent || [26, 24, 40];
-  // The body is on the parent so area() infers the collider (no k.body — it floats).
+  // Collider-only invisible body (same 34×18 hitbox + "enemy" tag + float state); the bird
+  // art is a child sprite. Movement is unchanged so the bot's air-enemy probe is unaffected.
   const flyer = k.add([
     k.rect(34, 18, { radius: 9 }),
-    k.color(...body),
+    k.opacity(0),
     k.pos(cx, cy),
     k.anchor("center"),
     k.area({ scale: 0.9 }),
@@ -189,10 +186,7 @@ function makeFlyer(cx, cy, theme) {
     "enemy",
     { baseX: cx, baseY: cy, dir: 1, t: k.rand(0, Math.PI * 2) },
   ]);
-  // Two swept-back wings + an eye (reads as a little crow/bird).
-  flyer.add([k.polygon([k.vec2(0, 0), k.vec2(-24, -13), k.vec2(-20, 7)]), k.color(...wing), k.pos(-8, -1)]);
-  flyer.add([k.polygon([k.vec2(0, 0), k.vec2(24, -13), k.vec2(20, 7)]), k.color(...wing), k.pos(8, -1)]);
-  flyer.add([k.circle(2.5), k.color(255, 255, 255), k.anchor("center"), k.pos(9, -3)]);
+  flyer.add([k.sprite("flyer"), k.anchor("center"), k.pos(0, 0)]);
 
   flyer.onUpdate(() => {
     flyer.pos.x += flyer.dir * ENEMIES.FLY_SPEED * k.dt();
@@ -207,22 +201,18 @@ function makeFlyer(cx, cy, theme) {
 // --- Stalactite hazard (stalattite, Livello 4): an icicle that hangs from the ceiling and
 // drops on a timer, then resets to the top. Tagged "hazard" (touch = respawn) at all times.
 function makeStalactite(x, y, TILE, theme, worldH) {
-  // Icicle = a downward-pointing triangle; the polygon itself carries the area collider.
+  // Collider-only invisible triangle (same hitbox + "hazard" tag + drop state); the icicle
+  // art is a child sprite tinted with the theme. Drop logic is unchanged.
   const stal = k.add([
     k.polygon([k.vec2(0, 0), k.vec2(TILE, 0), k.vec2(TILE / 2, TILE * 0.95)]),
+    k.opacity(0),
     k.pos(x, y),
     k.area({ scale: 0.8 }),
-    k.color(...theme.hazard),
     k.z(4),
     "hazard",
     { homeY: y, vy: 0, falling: false, timer: k.rand(0.6, HAZARDS.STALACTITE_INTERVAL) },
   ]);
-  // A brighter tip so the ice reads against the snowy backdrop.
-  stal.add([
-    k.polygon([k.vec2(-7, 0), k.vec2(7, 0), k.vec2(0, 22)]),
-    k.color(...(theme.hazardTip || PALETTE.cream)),
-    k.pos(TILE / 2, TILE * 0.95 - 24),
-  ]);
+  stal.add([k.sprite("hazard_icicle"), k.anchor("top"), k.color(...theme.hazard), k.pos(TILE / 2, 0)]);
 
   stal.onUpdate(() => {
     if (!stal.falling) {
@@ -245,11 +235,15 @@ function makeStalactite(x, y, TILE, theme, worldH) {
 // --- Goal: a shimmering light beam at the end of the level, tagged "goal".
 function makeGoal(cx, cy, theme) {
   const H = 230;
+  const goalCol = theme.goal || PALETTE.gold;
+  // The portal arch sprite (neutral grey, tinted with the goal colour) stands on the ground,
+  // behind the existing shimmering beam which stays as the magical glow + the "goal" collider.
+  k.add([k.sprite("portal"), k.pos(cx, cy + 20), k.anchor("bot"), k.color(...goalCol), k.z(1)]);
   const beam = k.add([
     k.rect(54, H),
     k.pos(cx, cy + 20),
     k.anchor("bot"),
-    k.color(...(theme.goal || PALETTE.gold)),
+    k.color(...goalCol),
     k.opacity(0.3),
     k.area(),
     k.z(2),

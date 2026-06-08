@@ -17,3 +17,14 @@ export function launchBrowser(opts = {}) {
   if (execPath) return chromium.launch({ ...base, executablePath: execPath });
   return chromium.launch({ ...base, channel });
 }
+
+// Optional: serve Kaplay from a local file instead of the unpkg CDN. Inert unless
+// PJ_KAPLAY_LOCAL points at a kaplay.mjs — used to run the gates in offline / CI / sandboxed
+// environments where the CDN is unreachable. On the normal setup (CDN reachable) it's a no-op.
+export async function routeVendorKaplay(page) {
+  const local = process.env.PJ_KAPLAY_LOCAL;
+  if (!local) return;
+  await page.route(/unpkg\.com\/.*kaplay.*\.mjs/, (route) =>
+    route.fulfill({ path: local, contentType: "text/javascript" }),
+  );
+}

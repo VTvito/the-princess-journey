@@ -17,6 +17,7 @@ export const k = kaplay({
   global: false,           // use the returned context, no globals
   touchToMouse: true,      // taps fire onClick — menu works on mobile
   pixelDensity: Math.min(window.devicePixelRatio || 1, 2), // crisp but cap for perf
+  crisp: true, // nearest-neighbour sampling so the generated 64px tiles/sprites stay sharp
   // Default font that ships with Kaplay; swap for a custom font in a later prompt.
   font: "sans-serif",
 });

@@ -5,7 +5,7 @@
 // Usage:  python tools/serve.py 8137   (then)   node tools/test/features.mjs
 // Exit code 0 = all pass, 1 = a failure or a console error.
 
-import { launchBrowser } from "./browser.mjs";
+import { launchBrowser, routeVendorKaplay } from "./browser.mjs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
@@ -21,6 +21,7 @@ const check = (name, ok, extra = "") => results.push({ name, ok: !!ok, extra });
 const browser = await launchBrowser();
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  await routeVendorKaplay(page);
   page.on("console", (m) => {
     if (m.type() === "error") errors.push(`console.error: ${m.text()}`);
   });

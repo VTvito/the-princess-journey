@@ -15,6 +15,7 @@ export const LEVEL_4 = {
   theme: {
     decor: "snow", // background style (see game.js drawBackground)
     collectibleIcon: "💎", // HUD icon for the crystals (older emoji; renders on Win10)
+    collectibleSprite: "crystal", // world sprite for the pickup (src/levels/build.js)
     hudText: [38, 50, 92], // HUD/banner text (deep blue — readable on the pale sky)
     bg: [182, 206, 230], // pale alpine sky
     bgBand: [226, 238, 250], // bright snow haze near the ground

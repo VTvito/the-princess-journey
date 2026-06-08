@@ -21,6 +21,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
 const SPRITES_DIR = join(ROOT, "assets", "sprites");
 const AUDIO_DIR = join(ROOT, "assets", "audio");
+const TILES_DIR = join(ROOT, "assets", "tilesets");
+const BG_DIR = join(ROOT, "assets", "backgrounds");
 
 // ---------------------------------------------------------------------------
 // PNG encoding (RGBA, 8-bit) — minimal, spec-compliant encoder.
@@ -200,6 +202,262 @@ function makeLogo() {
 }
 
 // ---------------------------------------------------------------------------
+// World art (spec §2): a tintable 64px tile atlas + collectible/enemy/goal sprites +
+// parallax backgrounds. Tiles and the goal are drawn in NEUTRAL LIGHT greys with baked
+// bevel + dither so the game's multiplicative k.color(theme.x) tint keeps contrast (the
+// faithful two-tone look is preserved by build.js: a body sprite tinted theme.solid plus
+// the existing thin theme.solidTop accent). Collectibles/enemies are drawn in their natural
+// colours (they're per-level, so no runtime tint is needed). Reuses the raster toolkit
+// (blank/pset/fillRect/fillDisc/fillTrap/darken) — no new dependencies.
+// ---------------------------------------------------------------------------
+const TILE = 64;
+const lighten = (c, f = 1.15) => c.map((v) => Math.min(255, Math.round(v * f)));
+
+// Copy a source RGBA buffer into a destination at (dx,dy), skipping transparent pixels.
+function blit(dst, dw, dh, src, sw, sh, dx, dy) {
+  for (let y = 0; y < sh; y++) {
+    for (let x = 0; x < sw; x++) {
+      const si = (y * sw + x) * 4;
+      const a = src[si + 3];
+      if (a === 0) continue;
+      const tx = dx + x;
+      const ty = dy + y;
+      if (tx < 0 || ty < 0 || tx >= dw || ty >= dh) continue;
+      pset(dst, dw, tx, ty, [src[si], src[si + 1], src[si + 2]], a);
+    }
+  }
+}
+
+// Deterministic speckle for a hand-textured feel (seeded LCG so output is reproducible).
+function speckle(buf, w, x0, y0, x1, y1, color, density, seed) {
+  let s = (seed >>> 0) || 1;
+  const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  for (let y = y0; y < y1; y++)
+    for (let x = x0; x < x1; x++) if (rnd() < density) pset(buf, w, x, y, color);
+}
+
+// --- Tileset frames (64×64, neutral grey, tinted at runtime) -----------------
+const GREY = [196, 196, 196];
+const GREY_HI = lighten(GREY, 1.18); // top-lit edge
+const GREY_LO = darken(GREY, 0.78); // shaded body
+const GREY_LO2 = darken(GREY, 0.62); // deepest shade / outline
+
+function tileGroundFill() {
+  const buf = blank(TILE, TILE);
+  fillRect(buf, TILE, 0, 0, TILE, TILE, GREY_LO);
+  speckle(buf, TILE, 0, 0, TILE, TILE, GREY_LO2, 0.14, 7); // earthy grain
+  speckle(buf, TILE, 0, 0, TILE, TILE, GREY, 0.06, 23); // lighter flecks
+  fillRect(buf, TILE, 0, 0, TILE, 2, GREY); // subtle seam at the very top
+  return buf;
+}
+function tileGroundTop() {
+  const buf = blank(TILE, TILE);
+  fillRect(buf, TILE, 0, 0, TILE, TILE, GREY_LO); // dirt body
+  speckle(buf, TILE, 0, 16, TILE, TILE, GREY_LO2, 0.14, 11);
+  // Grassy crown: a lighter band + a few blades poking up so the lit edge reads.
+  fillRect(buf, TILE, 0, 0, TILE, 16, GREY_HI);
+  for (let x = 2; x < TILE; x += 6) {
+    const h = 3 + ((x * 7) % 5);
+    fillTrap(buf, TILE, 16 - h, 16, x + 1, 0.5, 1.5, GREY_HI);
+  }
+  fillRect(buf, TILE, 0, 15, TILE, 18, GREY); // soil line under the grass
+  return buf;
+}
+function tilePlatform() {
+  const buf = blank(TILE, TILE);
+  // A rounded floating slab centred in the cell (transparent margins).
+  fillRect(buf, TILE, 2, 8, TILE - 2, TILE - 12, GREY_LO);
+  fillRect(buf, TILE, 2, 8, TILE - 2, 14, GREY_HI); // lit top
+  fillRect(buf, TILE, 2, TILE - 16, TILE - 2, TILE - 12, GREY_LO2); // shaded underside
+  speckle(buf, TILE, 2, 14, TILE - 2, TILE - 16, GREY_LO2, 0.1, 5);
+  return buf;
+}
+function tileHazardSpike() {
+  const buf = blank(TILE, TILE);
+  // A row of upward triangular spikes on a low base (drawn neutral, tinted theme.hazard).
+  fillRect(buf, TILE, 0, TILE - 14, TILE, TILE, GREY_LO);
+  for (let i = 0; i < 4; i++) {
+    const cx = 8 + i * 16;
+    fillTrap(buf, TILE, 16, TILE - 12, cx, 0.5, 8, GREY); // spike body
+    fillTrap(buf, TILE, 16, 30, cx, 0.5, 3, GREY_HI); // bright tip
+  }
+  return buf;
+}
+function tileHazardIcicle() {
+  const buf = blank(TILE, TILE);
+  // A downward icicle filling most of the cell (tinted theme.hazard at runtime).
+  fillTrap(buf, TILE, 0, TILE * 0.95, TILE / 2, TILE / 2, 1, GREY);
+  fillTrap(buf, TILE, 0, TILE * 0.6, TILE / 2 - 6, 6, 1, GREY_HI); // glossy highlight streak
+  fillRect(buf, TILE, 0, 0, TILE, 4, GREY_LO); // ceiling attachment
+  return buf;
+}
+
+// Compose the atlas as a horizontal strip: [ground_top|ground_fill|platform|spike|icicle].
+const ATLAS_FRAMES = ["ground_top", "ground_fill", "platform", "hazard_spike", "hazard_icicle"];
+function makeTileAtlas() {
+  const frames = [
+    tileGroundTop(),
+    tileGroundFill(),
+    tilePlatform(),
+    tileHazardSpike(),
+    tileHazardIcicle(),
+  ];
+  const aw = TILE * frames.length;
+  const ah = TILE;
+  const atlas = blank(aw, ah);
+  frames.forEach((f, i) => blit(atlas, aw, ah, f, TILE, TILE, i * TILE, 0));
+  return { buf: atlas, w: aw, h: ah };
+}
+
+// --- Collectible sprites (48×48, natural colour) -----------------------------
+const CW = 48;
+function gemBase(buf, cx, cy, r, col) {
+  fillDisc(buf, CW, cx, cy, r, darken(col, 0.85));
+  fillDisc(buf, CW, cx, cy, r - 2, col);
+  fillDisc(buf, CW, cx - r * 0.32, cy - r * 0.32, r * 0.28, lighten(col, 1.4)); // sheen
+}
+function makeApple() {
+  const buf = blank(CW, CW);
+  const red = [210, 64, 60];
+  gemBase(buf, 24, 28, 16, red);
+  fillDisc(buf, CW, 31, 28, 14, darken(red, 0.9)); // two lobes
+  fillRect(buf, CW, 23, 8, 26, 16, [96, 64, 42]); // stem
+  fillTrap(buf, CW, 6, 14, 32, 1, 6, [120, 178, 96]); // leaf
+  return buf;
+}
+function makePearl() {
+  const buf = blank(CW, CW);
+  const cream = [236, 240, 250];
+  gemBase(buf, 24, 26, 16, cream);
+  fillDisc(buf, CW, 19, 21, 4, [255, 255, 255]); // bright highlight
+  return buf;
+}
+function makeLantern() {
+  const buf = blank(CW, CW);
+  const warm = [255, 196, 84];
+  fillRect(buf, CW, 16, 12, 32, 16, [120, 40, 40]); // top cap
+  fillTrap(buf, CW, 16, 38, 24, 9, 12, warm); // glowing body
+  fillTrap(buf, CW, 16, 38, 24, 9, 12, lighten(warm, 1.2), 90); // inner glow
+  fillRect(buf, CW, 14, 36, 34, 40, [120, 40, 40]); // bottom cap
+  fillRect(buf, CW, 23, 8, 26, 12, [80, 30, 30]); // hook
+  return buf;
+}
+function makeCrystal() {
+  const buf = blank(CW, CW);
+  const cyan = [96, 214, 226];
+  // A faceted gem: upper trapezoid + lower point, with a lit left facet.
+  fillTrap(buf, CW, 10, 22, 24, 6, 15, cyan);
+  fillTrap(buf, CW, 22, 42, 24, 15, 1, darken(cyan, 0.9));
+  fillTrap(buf, CW, 10, 22, 20, 3, 7, lighten(cyan, 1.35)); // sheen facet
+  return buf;
+}
+
+// --- Enemy + goal sprites ----------------------------------------------------
+function makeCrab() {
+  const w = 64;
+  const h = 40;
+  const buf = blank(w, h);
+  const body = [206, 70, 60];
+  const claw = [232, 120, 104];
+  fillDisc(buf, w, 32, 24, 18, body); // shell
+  fillRect(buf, w, 14, 22, 50, 32, body);
+  fillDisc(buf, w, 12, 22, 6, claw); // claws
+  fillDisc(buf, w, 52, 22, 6, claw);
+  for (const lx of [20, 28, 36, 44]) fillRect(buf, w, lx, 30, lx + 2, 38, darken(body, 0.8)); // legs
+  fillDisc(buf, w, 26, 16, 4, [255, 255, 255]); // eyes
+  fillDisc(buf, w, 38, 16, 4, [255, 255, 255]);
+  fillDisc(buf, w, 26, 16, 2, [20, 20, 20]);
+  fillDisc(buf, w, 38, 16, 2, [20, 20, 20]);
+  return buf;
+}
+function makeFlyer() {
+  const w = 48;
+  const h = 32;
+  const buf = blank(w, h);
+  const body = [44, 40, 60];
+  const wing = [26, 24, 40];
+  fillDisc(buf, w, 24, 18, 9, body); // body
+  fillTrap(buf, w, 6, 18, 10, 1, 8, wing); // left wing (as a sideways triangle-ish)
+  fillTrap(buf, w, 6, 18, 38, 1, 8, wing); // right wing
+  fillRect(buf, w, 2, 12, 14, 16, wing);
+  fillRect(buf, w, 34, 12, 46, 16, wing);
+  fillDisc(buf, w, 27, 15, 2.5, [255, 255, 255]); // eye
+  return buf;
+}
+function makePortal() {
+  const w = 96;
+  const h = 160;
+  const buf = blank(w, h);
+  const stone = GREY_LO;
+  // Two pillars + an arched top, neutral grey (tinted theme.goal at runtime).
+  fillRect(buf, w, 8, 30, 26, h, stone);
+  fillRect(buf, w, w - 26, 30, w - 8, h, stone);
+  fillTrap(buf, w, 0, 34, w / 2, 8, 40, stone); // arch crown
+  // Inner glow (lighter towards the centre) so the gateway reads as magical.
+  for (let y = 34; y < h; y++) {
+    const t = (y - 34) / (h - 34);
+    fillRect(buf, w, 26, y, w - 26, y + 1, GREY_HI, Math.round(120 * (1 - t) + 40));
+  }
+  // Bevel highlights on the inner edges.
+  fillRect(buf, w, 24, 34, 28, h, GREY_HI);
+  fillRect(buf, w, w - 28, 34, w - 24, h, GREY_HI);
+  return buf;
+}
+
+// --- Parallax backgrounds ----------------------------------------------------
+// One palette per theme — mirrors the level themes in src/levels/level*.js (bg/bgBand for
+// the sky gradient, parallaxFar/parallaxNear for the two silhouette layers).
+const BG_THEMES = {
+  forest: { sky: [20, 44, 38], skyBot: [38, 74, 60], far: [34, 66, 54], near: [50, 90, 66], shape: "hills" },
+  coral: { sky: [10, 34, 70], skyBot: [24, 60, 104], far: [78, 70, 120], near: [42, 86, 118], shape: "mounds" },
+  rooftops: { sky: [58, 28, 64], skyBot: [168, 84, 92], far: [86, 50, 90], near: [120, 58, 76], shape: "roofs" },
+  snow: { sky: [150, 180, 216], skyBot: [226, 238, 250], far: [150, 172, 206], near: [124, 150, 190], shape: "peaks" },
+};
+
+function makeSky(top, bot) {
+  const w = 1280;
+  const h = 720;
+  const buf = blank(w, h);
+  for (let y = 0; y < h; y++) {
+    const f = y / (h - 1);
+    const c = [0, 1, 2].map((i) => Math.round(top[i] + (bot[i] - top[i]) * f));
+    fillRect(buf, w, 0, y, w, y + 1, c);
+  }
+  return buf;
+}
+
+// A silhouette layer (transparent) of the given shape across `w`, sitting on the bottom.
+function makeSilhouette(w, h, color, shape, scale, seed) {
+  const buf = blank(w, h);
+  let s = (seed >>> 0) || 1;
+  const rnd = () => ((s = (s * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff);
+  const baseY = h - 4;
+  if (shape === "hills" || shape === "mounds") {
+    const r = 120 * scale;
+    for (let x = -40; x < w + 80; x += r * 0.9) {
+      const rr = r * (0.7 + rnd() * 0.6);
+      fillDisc(buf, w, x, baseY, rr, color);
+    }
+  } else if (shape === "peaks") {
+    const pw = 360 * scale;
+    for (let x = -60; x < w + 120; x += pw * 0.8) {
+      const ph = (220 + rnd() * 160) * scale;
+      fillTrap(buf, w, baseY - ph, baseY, x, 0.5, pw / 2, color);
+      fillTrap(buf, w, baseY - ph, baseY - ph + 40 * scale, x, 0.5, 28 * scale, [240, 248, 255]); // snow cap
+    }
+  } else if (shape === "roofs") {
+    const rw = 300 * scale;
+    for (let x = -40; x < w + 80; x += rw * 0.9) {
+      const rh = (140 + rnd() * 90) * scale;
+      fillRect(buf, w, x - rw / 2 + 40, baseY - rh, x + rw / 2 - 40, baseY, color); // wall
+      fillTrap(buf, w, baseY - rh - 70 * scale, baseY - rh, x, 8, rw / 2, color); // upturned roof
+      fillRect(buf, w, x - 4, baseY - rh - 70 * scale - 24, x + 4, baseY - rh - 70 * scale, color); // finial
+    }
+  }
+  return buf;
+}
+
+// ---------------------------------------------------------------------------
 // Music — gentle, looping background tracks composed from the same tone() synth as the
 // SFX (see buildMenuMusic / buildGameMusic below the SFX section). The notes are drawn from
 // a pentatonic scale so they stay consonant, with soft envelopes and low volume so the loop
@@ -361,6 +619,8 @@ function encodeWav(samples, sampleRate = SFX_RATE) {
 // ---------------------------------------------------------------------------
 mkdirSync(SPRITES_DIR, { recursive: true });
 mkdirSync(AUDIO_DIR, { recursive: true });
+mkdirSync(TILES_DIR, { recursive: true });
+mkdirSync(BG_DIR, { recursive: true });
 
 // Heroines (spec §3). `dress` is the signature colour from each character's palette;
 // `hair`/`hairLen` give each a distinct silhouette.
@@ -398,6 +658,36 @@ console.log("audio  ->", join("assets", "audio", "game-bgm.wav"));
 for (const [name, samples] of Object.entries(buildSfx())) {
   writeFileSync(join(AUDIO_DIR, `${name}.wav`), encodeWav(normalize(samples)));
   console.log("sfx    ->", join("assets", "audio", `${name}.wav`));
+}
+
+// World tile atlas (spec §2) — one strip the four themes tint at runtime.
+const atlas = makeTileAtlas();
+writeFileSync(join(TILES_DIR, "tileset.png"), encodePNG(atlas.w, atlas.h, atlas.buf));
+console.log("tiles  ->", join("assets", "tilesets", "tileset.png"), `(frames: ${ATLAS_FRAMES.join(", ")})`);
+
+// Collectible / enemy / goal sprites (natural colour where per-level, neutral where tinted).
+const WORLD_SPRITES = [
+  { name: "apple.png", w: CW, h: CW, buf: makeApple() },
+  { name: "pearl.png", w: CW, h: CW, buf: makePearl() },
+  { name: "lantern.png", w: CW, h: CW, buf: makeLantern() },
+  { name: "crystal.png", w: CW, h: CW, buf: makeCrystal() },
+  { name: "crab.png", w: 64, h: 40, buf: makeCrab() },
+  { name: "flyer.png", w: 48, h: 32, buf: makeFlyer() },
+  { name: "portal.png", w: 96, h: 160, buf: makePortal() },
+];
+for (const s of WORLD_SPRITES) {
+  writeFileSync(join(SPRITES_DIR, s.name), encodePNG(s.w, s.h, s.buf));
+  console.log("sprite ->", join("assets", "sprites", s.name));
+}
+
+// Parallax backgrounds (spec §2): per theme, sky (1280×720) + mid (1920×480) + near (1920×360).
+for (const [name, t] of Object.entries(BG_THEMES)) {
+  writeFileSync(join(BG_DIR, `${name}_sky.png`), encodePNG(1280, 720, makeSky(t.sky, t.skyBot)));
+  const mid = makeSilhouette(1920, 480, t.far, t.shape, 1.0, 0x51 + name.length);
+  writeFileSync(join(BG_DIR, `${name}_mid.png`), encodePNG(1920, 480, mid));
+  const near = makeSilhouette(1920, 360, t.near, t.shape, 1.3, 0x91 + name.length);
+  writeFileSync(join(BG_DIR, `${name}_near.png`), encodePNG(1920, 360, near));
+  console.log("bg     ->", join("assets", "backgrounds", `${name}_{sky,mid,near}.png`));
 }
 
 console.log("\nDone. Placeholder assets generated.");

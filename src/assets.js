@@ -8,6 +8,14 @@ export function loadAssets() {
   for (const [key, path] of Object.entries(ASSETS.sprites)) {
     k.loadSprite(key, path);
   }
+  // Tile atlas (spec §2): one image, many named frames usable as k.sprite("ground_top").
+  if (ASSETS.tiles) {
+    k.loadSpriteAtlas(ASSETS.tiles.atlas, ASSETS.tiles.frames);
+  }
+  // Parallax background layers (spec §2).
+  for (const [key, path] of Object.entries(ASSETS.backgrounds || {})) {
+    k.loadSprite(key, path);
+  }
   for (const [key, path] of Object.entries(ASSETS.sounds)) {
     k.loadSound(key, path);
   }

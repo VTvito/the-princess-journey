@@ -133,6 +133,45 @@ export const ASSETS = {
     bodice: "assets/sprites/bodice.png",
     necklace: "assets/sprites/necklace.png",
     crown: "assets/sprites/crown.png",
+    // World sprites (spec §2) — per-level collectibles, enemies, and the goal portal.
+    // Collectibles/enemies are drawn in natural colour; the portal is neutral grey and
+    // tinted with theme.goal at build time (see src/levels/build.js).
+    apple: "assets/sprites/apple.png",
+    pearl: "assets/sprites/pearl.png",
+    lantern: "assets/sprites/lantern.png",
+    crystal: "assets/sprites/crystal.png",
+    crab: "assets/sprites/crab.png",
+    flyer: "assets/sprites/flyer.png",
+    portal: "assets/sprites/portal.png",
+  },
+
+  // Tile atlas (spec §2) — one 64px strip tinted per theme at runtime. Frames map names to
+  // sub-rects so src/levels/build.js can do k.sprite("ground_top") etc.
+  tiles: {
+    atlas: "assets/tilesets/tileset.png",
+    frames: {
+      ground_top: { x: 0, y: 0, width: 64, height: 64 },
+      ground_fill: { x: 64, y: 0, width: 64, height: 64 },
+      platform: { x: 128, y: 0, width: 64, height: 64 },
+      hazard_spike: { x: 192, y: 0, width: 64, height: 64 },
+      hazard_icicle: { x: 256, y: 0, width: 64, height: 64 },
+    },
+  },
+
+  // Parallax backgrounds (spec §2) — 3 layers × 4 themes, scrolled in src/scenes/game.js.
+  backgrounds: {
+    forest_sky: "assets/backgrounds/forest_sky.png",
+    forest_mid: "assets/backgrounds/forest_mid.png",
+    forest_near: "assets/backgrounds/forest_near.png",
+    coral_sky: "assets/backgrounds/coral_sky.png",
+    coral_mid: "assets/backgrounds/coral_mid.png",
+    coral_near: "assets/backgrounds/coral_near.png",
+    rooftops_sky: "assets/backgrounds/rooftops_sky.png",
+    rooftops_mid: "assets/backgrounds/rooftops_mid.png",
+    rooftops_near: "assets/backgrounds/rooftops_near.png",
+    snow_sky: "assets/backgrounds/snow_sky.png",
+    snow_mid: "assets/backgrounds/snow_mid.png",
+    snow_near: "assets/backgrounds/snow_near.png",
   },
   sounds: {
     // Background music, played on the Music bus (src/audio.js). Menu = gentle waltz,

@@ -14,6 +14,7 @@ export const LEVEL_3 = {
   theme: {
     decor: "rooftops", // background style (see game.js drawBackground)
     collectibleIcon: "🏮", // HUD icon for the lanterns (older emoji; renders on Win10)
+    collectibleSprite: "lantern", // world sprite for the pickup (src/levels/build.js)
     hudText: [255, 245, 230], // HUD/banner text (warm cream over the dusk sky)
     bg: [58, 28, 64], // dusk purple sky
     bgBand: [150, 70, 78], // warm horizon glow near the rooftops

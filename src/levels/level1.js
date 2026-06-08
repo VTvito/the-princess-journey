@@ -26,6 +26,7 @@ export const LEVEL_1 = {
   theme: {
     decor: "forest", // background style (see game.js drawBackground)
     collectibleIcon: "🍎", // HUD icon for the golden apples
+    collectibleSprite: "apple", // world sprite for the pickup (src/levels/build.js)
     bg: [20, 44, 38], // deep forest backdrop
     bgBand: [30, 62, 52], // lighter haze near the ground
     decoFar: [27, 56, 47], // distant tree silhouettes

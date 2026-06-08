@@ -27,7 +27,7 @@
 //
 // Exit code 0 = every level reached its goal; 1 = at least one was unreachable.
 
-import { launchBrowser } from "./browser.mjs";
+import { launchBrowser, routeVendorKaplay } from "./browser.mjs";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 
@@ -212,6 +212,7 @@ const browser = await launchBrowser();
 let failed = false;
 try {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+  await routeVendorKaplay(page);
   const errors = [];
   page.on("console", (m) => m.type() === "error" && errors.push(m.text()));
   page.on("pageerror", (e) => errors.push(e.message));

@@ -14,6 +14,7 @@ export const LEVEL_2 = {
   theme: {
     decor: "coral", // background style (see game.js drawBackground)
     collectibleIcon: "🐚", // HUD icon for the pearls (older emoji; 🫧 is tofu on Win10)
+    collectibleSprite: "pearl", // world sprite for the pickup (src/levels/build.js)
     bg: [10, 34, 70], // deep water
     bgBand: [20, 52, 96], // lighter water near the seabed
     decoFar: [190, 100, 110], // distant coral silhouettes
