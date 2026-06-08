@@ -18,12 +18,15 @@ export const LEVEL_2 = {
     bgBand: [20, 52, 96], // lighter water near the seabed
     decoFar: [190, 100, 110], // distant coral silhouettes
     decoNear: [150, 78, 92], // nearer coral silhouettes
+    parallaxFar: [78, 70, 120], // distant reef ridge (indigo, parallax far)
+    parallaxNear: [42, 86, 118], // nearer reef mound (teal, parallax near)
     solid: [54, 92, 116], // coral rock platform fill
     solidTop: [98, 150, 168], // lighter rocky rim
     hazard: [80, 40, 110], // sea urchin body
     hazardTip: [150, 90, 190], // urchin spikes
     collectible: [235, 240, 250], // pearl
     collectibleAccent: [255, 255, 255], // pearl highlight
+    collectibleGlow: [130, 225, 235], // aqua shimmer behind the pearl (juiciness)
     enemy: [206, 70, 60], // crab shell
     enemyAccent: [232, 120, 104], // crab claws
     goal: [120, 220, 230], // aqua light beam

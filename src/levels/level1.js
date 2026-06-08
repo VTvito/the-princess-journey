@@ -28,12 +28,15 @@ export const LEVEL_1 = {
     bgBand: [30, 62, 52], // lighter haze near the ground
     decoFar: [27, 56, 47], // distant tree silhouettes
     decoNear: [22, 49, 41], // nearer tree silhouettes
+    parallaxFar: [34, 66, 54], // distant misty hills (parallax far layer)
+    parallaxNear: [50, 90, 66], // nearer rolling hills (parallax near layer)
     solid: [74, 104, 60], // mossy earth/platform fill
     solidTop: [122, 178, 94], // bright grassy top accent
     hazard: [122, 38, 58], // bramble body
     hazardTip: [170, 62, 84], // bramble spikes
     collectible: [212, 175, 55], // golden apple
     collectibleAccent: [255, 240, 200], // apple highlight
+    collectibleGlow: [255, 236, 170], // warm aura behind the apple (juiciness)
     leaf: [126, 178, 96], // apple leaf (forest only)
   },
 

@@ -19,12 +19,16 @@ export const LEVEL_3 = {
     bgBand: [150, 70, 78], // warm horizon glow near the rooftops
     decoFar: [42, 26, 50], // distant pagoda roofs
     decoNear: [28, 18, 36], // nearer roofs
+    parallaxFar: [86, 50, 90], // distant dusk mountains (parallax far)
+    parallaxNear: [120, 58, 76], // nearer dusk ridge (parallax near)
+    ember: [255, 198, 120], // drifting dusk fireflies/embers (ambient particles)
     solid: [92, 42, 48], // terracotta roof tile
     solidTop: [196, 120, 70], // sunlit roof ridge
     hazard: [60, 50, 58], // broken-tile spikes
     hazardTip: [120, 110, 122],
     collectible: [255, 196, 84], // glowing paper lantern
     collectibleAccent: [255, 240, 180],
+    collectibleGlow: [255, 180, 90], // warm lantern aura (juiciness)
     enemy: [44, 40, 60], // crow body
     enemyAccent: [22, 20, 34], // crow wings
     goal: [255, 210, 120], // warm lantern-light beam

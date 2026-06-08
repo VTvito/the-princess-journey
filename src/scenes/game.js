@@ -174,8 +174,10 @@ function drawBackground(theme) {
   ]);
   drawParallax(theme); // depth layers that scroll slower than the camera (spec §3)
   if (theme.decor === "coral") drawCoral(theme);
-  else if (theme.decor === "rooftops") drawRooftops(theme);
-  else if (theme.decor === "snow") drawSnow(theme);
+  else if (theme.decor === "rooftops") {
+    drawRooftops(theme);
+    drawEmbers(theme); // dusk fireflies/embers — ambient motion like coral's bubbles
+  } else if (theme.decor === "snow") drawSnow(theme);
   else drawForest(theme);
 }
 
@@ -189,11 +191,14 @@ function getCamX() {
 // advances, each at a fraction of camera speed (0.2x far, 0.5x near) for depth. They're big
 // circles centred just below the screen, so only broad, overlapping domes show as a hilly
 // ridge. Screen-fixed and repositioned + wrapped every frame, so they tile across any level.
-// The near layer uses the lighter `solid` tone so the hills read against dark backdrops. ---
+// Colours come from each theme's parallaxFar/parallaxNear (tuned per level for contrast,
+// with a fallback to the old decoFar/solid tones for any level that omits them). ---
 function drawParallax(theme) {
+  const far = theme.parallaxFar || theme.decoFar;
+  const near = theme.parallaxNear || theme.solid;
   const layers = [
-    { factor: 0.2, color: theme.decoFar, cy: GAME_H + 130, r: 340, gap: 520, op: 0.4 },
-    { factor: 0.5, color: theme.solid, cy: GAME_H + 90, r: 280, gap: 420, op: 0.5 },
+    { factor: 0.2, color: far, cy: GAME_H + 130, r: 340, gap: 520, op: 0.45 },
+    { factor: 0.5, color: near, cy: GAME_H + 90, r: 280, gap: 420, op: 0.55 },
   ];
   layers.forEach(({ factor, color, cy, r, gap, op }) => {
     const count = Math.ceil(GAME_W / gap) + 3;
@@ -301,6 +306,37 @@ function drawRooftops(theme) {
     // A small finial on the ridge.
     k.add([k.rect(8, 26), k.pos(r.x, baseY - 76), k.anchor("bot"), k.color(...col), k.fixed(), k.z(-95)]);
   });
+}
+
+// Warm dusk motes (fireflies / lantern embers) that rise and gently sway — ambient life for
+// the eastern-rooftops level, echoing its glowing-lantern collectibles. Mirrors the drifting
+// bubbles (coral) and snow (alpine) so every level has signature ambient motion.
+function drawEmbers(theme) {
+  const tint = theme.ember || [255, 198, 120];
+  for (let i = 0; i < 18; i++) {
+    const rise = k.rand(10, 26);
+    const swayAmp = k.rand(6, 16);
+    const swaySpd = k.rand(0.6, 1.4);
+    const m = k.add([
+      k.circle(k.rand(2, 4)),
+      k.pos(k.rand(0, GAME_W), k.rand(0, GAME_H)),
+      k.color(...tint),
+      k.opacity(k.rand(0.3, 0.6)),
+      k.fixed(),
+      k.z(-90),
+      { baseX: 0, t: k.rand(0, Math.PI * 2) },
+    ]);
+    m.baseX = m.pos.x;
+    m.onUpdate(() => {
+      m.t += k.dt() * swaySpd;
+      m.pos.y -= rise * k.dt();
+      m.pos.x = m.baseX + Math.sin(m.t) * swayAmp;
+      if (m.pos.y < -8) {
+        m.pos.y = GAME_H + 8;
+        m.baseX = k.rand(0, GAME_W);
+      }
+    });
+  }
 }
 
 // Snowy peaks + falling snow for the alpine level.

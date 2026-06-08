@@ -35,6 +35,7 @@ npm install             # once: fetches playwright-core (skips the browser downl
 npm run serve           # terminal 1 — serves http://localhost:8137
 npm test                # terminal 2 — smoke: boots to the menu, no console errors
 npm run test:features   # deeper: audio toggle, movement/jump, Insert Coin, finale receipt
+npm run test:levels     # boots each of levels 1–4, asserts no errors + screenshots the art
 ```
 
 Each writes a screenshot to `tools/test/`. The tests read a localhost-only dev handle
@@ -113,6 +114,7 @@ tools/
   test/
     smoke.mjs           boots the game in real Edge, asserts it reaches the menu
     features.mjs        deeper checks: audio, movement, Insert Coin, finale receipt
+    levels.mjs          boots each level 1–4 (no errors) + screenshots the themed art
 ```
 
 ## Levels
@@ -184,8 +186,12 @@ collision logic in `game.js`:
 - **Finale receipt → WhatsApp.** The Sala da Ballo shows a paper *Scontrino* with the total
   debt and a **Paga il Debito!** button that opens a pre-filled WhatsApp share (no fixed
   number; the amount is substituted into the link).
-- **Game feel.** Squash & stretch on jump/land, a confetti burst on every pickup, and a
-  two-layer parallax backdrop (0.2× / 0.5× the camera speed).
+- **Game feel.** Squash & stretch on jump/land, a confetti burst on every pickup, a soft
+  themed aura behind each collectible, and rising motes at every level goal.
+- **Per-level art.** A two-layer parallax backdrop (0.2× / 0.5× the camera speed) whose
+  ridge colours are tuned per theme (`parallaxFar` / `parallaxNear`) so they read on both
+  dark (forest, dusk) and pale (snow) skies, plus signature ambient particles for every
+  level: forest calm, coral bubbles, **dusk fireflies/embers (Tetti d'Oriente)**, alpine snow.
 - **Quality of life.** A CSS fade between scenes, an always-on **🔊 / 🔇** audio toggle
   (top-right, choice persisted), and instant press feedback on the touch buttons.
 

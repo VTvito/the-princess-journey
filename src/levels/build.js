@@ -111,6 +111,17 @@ function makeCollectible(cx, cy, theme) {
     "collectible",
     { baseY: cy, t: k.rand(0, Math.PI * 2) },
   ]);
+  // Soft themed aura so the pickup reads as precious (spec §3 juiciness). Pure decoration:
+  // it carries no area(), so the pickup hitbox is unchanged. Low opacity keeps the gem crisp
+  // regardless of child draw order (a faint bloom even if it renders in front of the body).
+  const halo = item.add([
+    k.circle(20),
+    k.color(...(theme.collectibleGlow || PALETTE.gold)),
+    k.anchor("center"),
+    k.pos(0, 0),
+    k.opacity(0.16),
+    k.z(2), // behind the body (z3) where child z is honoured
+  ]);
   // Small highlight so a pale pearl still reads as a sphere.
   item.add([k.circle(4), k.color(...(theme.collectibleAccent || PALETTE.cream)), k.pos(-4, -4)]);
   // Forest apples get a stem + leaf; other themes skip it.
@@ -125,6 +136,7 @@ function makeCollectible(cx, cy, theme) {
   item.onUpdate(() => {
     item.t += k.dt() * 3;
     item.pos.y = item.baseY + Math.sin(item.t) * 4;
+    halo.opacity = 0.12 + 0.1 * (0.5 + 0.5 * Math.sin(item.t * 1.6)); // gentle ~0.12..0.22 pulse
   });
   return item;
 }
@@ -252,4 +264,24 @@ function makeGoal(cx, cy, theme) {
     k.anchor("center"),
     k.z(3),
   ]);
+  // Rising motes along the beam — a little magic at the level's end (spec §3). Scene-scoped
+  // via k.loop (stops + cleans up on scene change); pure decoration, no collider.
+  const moteCol = theme.goal || PALETTE.gold;
+  k.loop(0.3, () => {
+    const m = k.add([
+      k.circle(k.rand(2, 4)),
+      k.pos(cx + k.rand(-18, 18), cy + 16),
+      k.anchor("center"),
+      k.color(...moteCol),
+      k.opacity(0.85),
+      k.z(2),
+      { vy: k.rand(45, 80), age: 0, life: k.rand(1.0, 1.6) },
+    ]);
+    m.onUpdate(() => {
+      m.age += k.dt();
+      m.pos.y -= m.vy * k.dt();
+      m.opacity = Math.max(0, 0.85 * (1 - m.age / m.life));
+      if (m.age >= m.life) k.destroy(m);
+    });
+  });
 }

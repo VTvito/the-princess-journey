@@ -20,12 +20,15 @@ export const LEVEL_4 = {
     bgBand: [226, 238, 250], // bright snow haze near the ground
     decoFar: [150, 178, 210], // distant peaks
     decoNear: [120, 150, 188], // nearer peaks
+    parallaxFar: [150, 172, 206], // distant ranges (parallax far)
+    parallaxNear: [124, 150, 190], // nearer ranges (parallax near)
     solid: [158, 184, 206], // packed snow/ice platform
     solidTop: [240, 248, 255], // bright snow cap
     hazard: [120, 200, 225], // ice (stalactite / spikes)
     hazardTip: [205, 240, 250],
     collectible: [96, 214, 226], // crystal (cyan)
     collectibleAccent: [236, 255, 255],
+    collectibleGlow: [200, 245, 255], // pale icy aura behind the crystal (juiciness)
     goal: [120, 220, 235], // icy light beam
   },
 

@@ -8,7 +8,8 @@
     "test": "node tools/test/smoke.mjs",
     "test:smoke": "node tools/test/smoke.mjs",
     "test:features": "node tools/test/features.mjs",
-    "test:all": "node tools/test/smoke.mjs && node tools/test/features.mjs"
+    "test:levels": "node tools/test/levels.mjs",
+    "test:all": "node tools/test/smoke.mjs && node tools/test/features.mjs && node tools/test/levels.mjs"
   },
   "devDependencies": {
     "playwright-core": "^1.60.0"
