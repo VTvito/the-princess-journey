@@ -6,6 +6,8 @@
 // Tile legend:  "=" snow/ice   "^" ice spikes (hazard)   "o" cristallo (collectible)
 //               "s" stalattite (falling hazard)   "@" spawn   ">" goal   " " air/ravine
 
+import { composeMap, arcCollectibles, LANE } from "./mapkit.js";
+
 export const LEVEL_4 = {
   id: 4,
   name: "Cime Innevate",
@@ -33,17 +35,25 @@ export const LEVEL_4 = {
     goal: [120, 220, 235], // icy light beam
   },
 
-  map: [
-    "", // 0
-    "", // 1
-    "", // 2
-    "          s         s         s", // 3  stalactites hang from the ceiling, drop on a timer (one per segment)
-    "", // 4
-    "", // 5
-    "      o                 o         o", // 6  crystals (grabbed mid-jump)
-    "               o         o", // 7  crystals along the lane
-    "  @                                  >", // 8  spawn, goal (the dropping stalactites are the hazard)
-    "============  ============  ============", // 9  snowy floor (gaps = ravines)
-    "============  ============  ============", // 10 snowy floor
-  ],
+  // ≈120 cells wide. Snowy floor with jumpable ravines; the hazard is the dropping stalactites
+  // (s) that hang from the ceiling (row 3) over the lane and fall on a timer — the bot waits in
+  // the clear, then proceeds. Each sits mid-segment (over solid ground, not a ravine) so the
+  // wait happens on firm footing. Crystals float along the arc.
+  map: composeMap({
+    width: 120,
+    ravines: [{ x: 22, w: 2 }, { x: 46, w: 2 }, { x: 70, w: 2 }, { x: 94, w: 2 }],
+    items: [
+      { x: 2, y: LANE, ch: "@" },
+      { x: 116, y: LANE, ch: ">" },
+      // Stalactites hang over mid-segment columns (clear of ravines).
+      { x: 14, y: 3, ch: "s" },
+      { x: 36, y: 3, ch: "s" },
+      { x: 60, y: 3, ch: "s" },
+      { x: 84, y: 3, ch: "s" },
+      { x: 108, y: 3, ch: "s" },
+      ...arcCollectibles([8, 18, 28, 38, 50, 62, 74, 86, 98, 110]),
+      { x: 30, y: 4, ch: "o" },
+      { x: 78, y: 4, ch: "o" },
+    ],
+  }),
 };

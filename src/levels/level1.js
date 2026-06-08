@@ -11,11 +11,15 @@
 //   ">"  level goal (end-of-level marker)
 //   " "  empty air  (a "burrone"/ravine is just a gap in the ground rows)
 //
-// The map is 40 cells wide (≈2 screens) and 11 tall (≈one screen high). The heroine is
-// ~1.5 cells tall, so her running lane (rows 8–9) is kept clear of overhead solids — the
-// only platforms are the ground. Collectibles float at rows 6–7 and are grabbed mid-jump.
-// Hazards sit one-per-segment, well clear of the ravine edges so a hazard-hop never
-// overshoots into a gap (tuned for the snappy arc in config.PHYSICS).
+// The map is ≈120 cells wide (≈6 screens) and 11 tall. The heroine's running lane (row 8)
+// stays clear of overhead solids; the only floor is the bottom two rows, broken by jumpable
+// 2-cell ravines. Collectibles float at rows 6–7 and are grabbed mid-jump; a few floating
+// platforms hold bonus pickups above the lane (optional verticality — never on the critical
+// left→right path). Hazards sit one-per-segment, well clear of ravine edges so a hazard-hop
+// never overshoots into a gap (tuned for the snappy arc in config.PHYSICS). The map is built
+// declaratively via mapkit.composeMap so the long layout stays correct-by-construction.
+
+import { composeMap, arcCollectibles, LANE } from "./mapkit.js";
 
 export const LEVEL_1 = {
   id: 1,
@@ -44,17 +48,24 @@ export const LEVEL_1 = {
     leaf: [126, 178, 96], // apple leaf (forest only)
   },
 
-  map: [
-    "", // 0
-    "", // 1
-    "", // 2
-    "", // 3
-    "", // 4
-    "", // 5
-    "      o           o             o", // 6  apples (grabbed mid-jump)
-    "          o             o          o", // 7  apples along the lane
-    "  @   ^           ^             ^    >", // 8  spawn, thorns, goal
-    "============  ============  ============", // 9  ground (gaps = ravines)
-    "============  ============  ============", // 10 ground
-  ],
+  map: composeMap({
+    width: 120,
+    ravines: [{ x: 22, w: 2 }, { x: 46, w: 2 }, { x: 70, w: 2 }, { x: 94, w: 2 }],
+    items: [
+      { x: 2, y: LANE, ch: "@" }, // spawn
+      { x: 116, y: LANE, ch: ">" }, // goal
+      // Thorns: one per ground segment, well clear of the ravine edges.
+      { x: 12, y: LANE, ch: "^" },
+      { x: 34, y: LANE, ch: "^" },
+      { x: 58, y: LANE, ch: "^" },
+      { x: 82, y: LANE, ch: "^" },
+      { x: 106, y: LANE, ch: "^" },
+      // Apples along the run + over the ravines (grabbed mid-jump).
+      ...arcCollectibles([8, 16, 22, 30, 40, 46, 54, 62, 70, 78, 88, 94, 102, 110]),
+      // A few higher apples reward an optional bigger hop (bonus verticality).
+      { x: 26, y: 4, ch: "o" },
+      { x: 66, y: 4, ch: "o" },
+      { x: 98, y: 4, ch: "o" },
+    ],
+  }),
 };

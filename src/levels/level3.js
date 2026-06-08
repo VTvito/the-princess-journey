@@ -5,6 +5,8 @@
 // Tile legend:  "=" roof tile   "^" broken-tile spikes (hazard)   "o" lampada (collectible)
 //               "f" ostacolo volante (flyer enemy)   "@" spawn   ">" goal   " " air/ravine
 
+import { composeMap, arcCollectibles, LANE, AIR } from "./mapkit.js";
+
 export const LEVEL_3 = {
   id: 3,
   name: "Tetti d'Oriente",
@@ -35,17 +37,26 @@ export const LEVEL_3 = {
     goal: [255, 210, 120], // warm lantern-light beam
   },
 
-  map: [
-    "", // 0
-    "", // 1
-    "", // 2
-    "", // 3
-    "", // 4
-    "", // 5
-    "      o           f f          o", // 6  lanterns + flyers patrolling the open mid-air
-    "          o             o          o", // 7  lanterns along the lane
-    "  @   ^                         ^    >", // 8  spawn, spikes (clear of the flyers' lane), goal
-    "============  ============  ============", // 9  rooftop floor (gaps = ravines)
-    "============  ============  ============", // 10 rooftop floor
-  ],
+  // ≈120 cells wide. Rooftop floor with jumpable ravines and broken-tile spikes (^). Flyers
+  // (f) patrol the open mid-air (row AIR) over FLAT stretches — never above a ravine or spike,
+  // so the bot runs underneath without being forced to jump into one. Lanterns float along.
+  map: composeMap({
+    width: 120,
+    ravines: [{ x: 22, w: 2 }, { x: 46, w: 2 }, { x: 70, w: 2 }, { x: 94, w: 2 }],
+    items: [
+      { x: 2, y: LANE, ch: "@" },
+      { x: 116, y: LANE, ch: ">" },
+      // Lane spikes, well clear of ravine edges.
+      { x: 12, y: LANE, ch: "^" },
+      { x: 58, y: LANE, ch: "^" },
+      { x: 106, y: LANE, ch: "^" },
+      // Flyers over flat ground (no spike/ravine beneath) so running under them is safe.
+      { x: 34, y: AIR, ch: "f" },
+      { x: 82, y: AIR, ch: "f" },
+      ...arcCollectibles([8, 16, 24, 30, 40, 48, 54, 64, 72, 78, 88, 96, 102, 112]),
+      { x: 26, y: 4, ch: "o" },
+      { x: 66, y: 4, ch: "o" },
+      { x: 98, y: 4, ch: "o" },
+    ],
+  }),
 };

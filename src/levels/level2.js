@@ -5,6 +5,8 @@
 // Tile legend:  "=" coral rock   "^" riccio di mare (urchin, hazard)   "o" perla
 //               "c" granchio (crab enemy)   "@" spawn   ">" goal   " " water/ravine
 
+import { composeMap, arcCollectibles, LANE } from "./mapkit.js";
+
 export const LEVEL_2 = {
   id: 2,
   name: "Abissi di Corallo",
@@ -33,17 +35,25 @@ export const LEVEL_2 = {
     goal: [120, 220, 230], // aqua light beam
   },
 
-  map: [
-    "", // 0
-    "", // 1
-    "", // 2
-    "", // 3
-    "", // 4
-    "", // 5
-    "      o             o           o", // 6  pearls (grabbed mid-jump)
-    "          o             o         o", // 7  pearls along the lane
-    "  @   ^            c           ^     >", // 8  spawn, urchin, crab, urchin, goal
-    "============  ============  ============", // 9  coral floor (gaps = ravines)
-    "============  ============  ============", // 10 coral floor
-  ],
+  // ≈120 cells wide. Coral floor broken by jumpable ravines; urchins (^) on the lane and
+  // patrolling crabs (c) between them, each well clear of the ravine edges. Pearls float along
+  // the arc with a few higher ones for an optional bigger hop. Built via mapkit.composeMap.
+  map: composeMap({
+    width: 120,
+    ravines: [{ x: 22, w: 2 }, { x: 46, w: 2 }, { x: 70, w: 2 }, { x: 94, w: 2 }],
+    items: [
+      { x: 2, y: LANE, ch: "@" },
+      { x: 116, y: LANE, ch: ">" },
+      // Urchins (static spikes) + crabs (patrolling), spaced clear of ravines and each other.
+      { x: 12, y: LANE, ch: "^" },
+      { x: 34, y: LANE, ch: "c" },
+      { x: 58, y: LANE, ch: "^" },
+      { x: 82, y: LANE, ch: "c" },
+      { x: 106, y: LANE, ch: "^" },
+      ...arcCollectibles([8, 16, 24, 30, 40, 48, 54, 64, 72, 78, 88, 96, 102, 112]),
+      { x: 26, y: 4, ch: "o" },
+      { x: 66, y: 4, ch: "o" },
+      { x: 98, y: 4, ch: "o" },
+    ],
+  }),
 };

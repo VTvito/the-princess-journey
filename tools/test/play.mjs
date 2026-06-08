@@ -38,7 +38,7 @@ const LEVELS = [1, 2, 3, 4];
 
 // Bot tuning (ms). Generous — this checks "is there a path", not speedrunning.
 const POLL = 70; // sample/drive cadence
-const LEVEL_BUDGET = 45000; // total wall-clock per level before giving up
+const LEVEL_BUDGET = 90000; // total wall-clock per level before giving up (levels are ≈3× longer now)
 const STALL_FAIL = 4000; // wedged (not deliberately waiting) this long → blocked: report x
 const WAIT_FAIL = 5000; // waiting on a hazard this long → something is wrong
 const MAX_DEATHS = 15; // give up on a level after this many respawns
@@ -83,9 +83,11 @@ const tick = (page) =>
     const groundAhead = solids.some(
       (s) => s.pos.y > 540 && probe >= s.pos.x && probe < s.pos.x + (s.width || 64),
     );
-    // A thorn / urchin / ice-spike on the lane just ahead.
+    // A thorn / urchin / ice-spike on the lane just ahead. The look-ahead (px+118) gives the
+    // hop enough lead to clear the spike under the new variable-jump arc (the old px+82 was
+    // tuned to the symmetric arc and sometimes fired too late, clipping the spike on take-off).
     const thornAhead = hazards.some(
-      (h) => !h.falling && h.pos.y > 500 && cxOf(h) > px + 8 && cxOf(h) < px + 82,
+      (h) => !h.falling && h.pos.y > 500 && cxOf(h) > px + 8 && cxOf(h) < px + 118,
     );
     // A stalactite dropping in the column over / just ahead of the heroine.
     const stalThreat = hazards.some((h) => h.falling && cxOf(h) > px - 24 && cxOf(h) < px + 88);
