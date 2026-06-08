@@ -176,27 +176,18 @@ export function registerGameScene() {
   });
 }
 
-// --- Themed backdrop (placeholder shapes; real art is a later prompt) ---
+// --- Themed backdrop (spec §2): three generated parallax image layers per theme (sky / mid /
+// near) plus the signature ambient particles. The static silhouette polygons were replaced by
+// the mid/near images; the particle systems (motes / bubbles / snow) are kept as juice. ---
 function drawBackground(theme) {
-  k.add([k.rect(GAME_W, GAME_H), k.pos(0, 0), k.color(...theme.bg), k.fixed(), k.z(-100)]);
-  k.add([
-    k.rect(GAME_W, 180),
-    k.pos(0, GAME_H - 180),
-    k.color(...theme.bgBand),
-    k.opacity(0.5),
-    k.fixed(),
-    k.z(-99),
-  ]);
-  drawParallax(theme); // depth layers that scroll slower than the camera (spec §3)
-  if (theme.decor === "coral") drawCoral(theme);
-  else if (theme.decor === "rooftops") {
-    drawRooftops(theme);
-    drawMotes(theme); // dusk fireflies/embers — ambient motion like coral's bubbles
-  } else if (theme.decor === "snow") drawSnow(theme);
-  else {
-    drawForest(theme);
-    drawMotes(theme); // enchanted-forest fireflies/pollen
-  }
+  const decor = theme.decor; // "forest" | "coral" | "rooftops" | "snow" → background key prefix
+  // Sky: a full-screen (1280×720) gradient image, screen-fixed behind everything.
+  k.add([k.sprite(`${decor}_sky`), k.pos(0, 0), k.fixed(), k.z(-100)]);
+  drawParallax(decor); // mid + near silhouette layers, scrolled below camera speed
+  // Signature ambient particles per theme.
+  if (decor === "coral") drawBubbles();
+  else if (decor === "snow") drawSnowflakes();
+  else drawMotes(theme); // forest fireflies/pollen + rooftops dusk embers
 }
 
 // Current camera x (Kaplay renamed the getter across versions).
@@ -205,83 +196,45 @@ function getCamX() {
   return p && Number.isFinite(p.x) ? p.x : GAME_W / 2;
 }
 
-// --- Parallax (spec §3): two layers of distant rolling hills that drift left as the camera
-// advances, each at a fraction of camera speed (0.2x far, 0.5x near) for depth. They're big
-// circles centred just below the screen, so only broad, overlapping domes show as a hilly
-// ridge. Screen-fixed and repositioned + wrapped every frame, so they tile across any level.
-// Colours come from each theme's parallaxFar/parallaxNear (tuned per level for contrast,
-// with a fallback to the old decoFar/solid tones for any level that omits them). ---
-function drawParallax(theme) {
-  const far = theme.parallaxFar || theme.decoFar;
-  const near = theme.parallaxNear || theme.solid;
+// --- Parallax (spec §2/§3): the "<decor>_mid" and "<decor>_near" images, screen-fixed and
+// bottom-aligned, scrolled at a fraction of camera speed (0.5 / 0.8) for depth. Each image is
+// 1920px wide; we lay down enough copies to cover the viewport and wrap them modulo the strip
+// span every frame, so the silhouettes tile seamlessly across any level width. ---
+function drawParallax(decor) {
   const layers = [
-    { factor: 0.2, color: far, cy: GAME_H + 130, r: 340, gap: 520, op: 0.45 },
-    { factor: 0.5, color: near, cy: GAME_H + 90, r: 280, gap: 420, op: 0.55 },
+    { key: `${decor}_mid`, imgW: 1920, factor: 0.5, z: -98 },
+    { key: `${decor}_near`, imgW: 1920, factor: 0.8, z: -97 },
   ];
-  layers.forEach(({ factor, color, cy, r, gap, op }) => {
-    const count = Math.ceil(GAME_W / gap) + 3;
-    const span = count * gap;
-    const blobs = [];
+  layers.forEach(({ key, imgW, factor, z }) => {
+    const count = Math.ceil(GAME_W / imgW) + 2; // cover the viewport + room to wrap
+    const span = count * imgW;
+    const tiles = [];
     for (let i = 0; i < count; i++) {
-      blobs.push(
+      tiles.push(
         k.add([
-          k.circle(r),
-          k.pos(i * gap, cy),
-          k.anchor("center"),
-          k.color(...color),
-          k.opacity(op),
+          k.sprite(key),
+          k.pos(i * imgW, GAME_H),
+          k.anchor("botleft"), // sit the silhouette on the bottom edge
           k.fixed(),
-          k.z(-98), // above the bg band (-99), behind the themed decor (-95/-96)
-          { baseX: i * gap },
+          k.z(z),
+          { baseX: i * imgW },
         ]),
       );
     }
     k.onUpdate(() => {
       const shift = getCamX() * factor;
-      blobs.forEach((b) => {
-        let x = (b.baseX - shift) % span;
+      tiles.forEach((t) => {
+        let x = (t.baseX - shift) % span;
         if (x < 0) x += span; // wrap into [0, span)
-        b.pos.x = x - 1.5 * gap; // lead-in off the left edge
+        t.pos.x = x - imgW; // one strip of lead-in off the left edge
       });
     });
   });
 }
 
-// Tall tree silhouettes (alberi alti). Fixed = a calm far-parallax layer.
-function drawForest(theme) {
-  const treeXs = [120, 360, 640, 920, 1180];
-  treeXs.forEach((tx, i) => {
-    const far = i % 2 === 0;
-    const col = far ? theme.decoFar : theme.decoNear;
-    const h = far ? 380 : 320;
-    k.add([k.rect(26, h), k.pos(tx, GAME_H - 120), k.anchor("bot"), k.color(...col), k.fixed(), k.z(-95)]);
-    for (let t = 0; t < 3; t++) {
-      const cw = 160 - t * 32;
-      k.add([
-        k.polygon([k.vec2(-cw / 2, 0), k.vec2(cw / 2, 0), k.vec2(0, -130)]),
-        k.pos(tx, GAME_H - 120 - h * 0.45 - t * 72),
-        k.color(...col),
-        k.fixed(),
-        k.z(-94),
-      ]);
-    }
-  });
-}
-
-// Coral fronds + drifting bubbles for the underwater level.
-function drawCoral(theme) {
-  const coralXs = [140, 380, 660, 940, 1180];
-  coralXs.forEach((cxp, i) => {
-    const far = i % 2 === 0;
-    const col = far ? theme.decoFar : theme.decoNear;
-    const h = far ? 220 : 170;
-    const baseY = GAME_H - 80;
-    // A branching coral: a trunk plus a couple of arms.
-    k.add([k.rect(20, h), k.pos(cxp, baseY), k.anchor("bot"), k.color(...col), k.fixed(), k.z(-95)]);
-    k.add([k.rect(16, h * 0.6), k.pos(cxp - 28, baseY), k.anchor("bot"), k.color(...col), k.fixed(), k.z(-95), k.rotate(18)]);
-    k.add([k.rect(16, h * 0.6), k.pos(cxp + 28, baseY), k.anchor("bot"), k.color(...col), k.fixed(), k.z(-95), k.rotate(-18)]);
-  });
-  // Drifting bubbles.
+// Drifting bubbles for the underwater level (extracted from the old drawCoral; the coral
+// fronds now live in the coral_mid/near parallax images).
+function drawBubbles() {
   for (let i = 0; i < 14; i++) {
     const bx = k.rand(0, GAME_W);
     const speed = k.rand(12, 30);
@@ -298,32 +251,6 @@ function drawCoral(theme) {
       if (bub.pos.y < -10) bub.pos.y = GAME_H + 10;
     });
   }
-}
-
-// Pagoda-roof silhouettes for the eastern-rooftops level (calm far-parallax layer).
-function drawRooftops(theme) {
-  const roofs = [
-    { x: 180, w: 300, far: true },
-    { x: 520, w: 250, far: false },
-    { x: 870, w: 320, far: true },
-    { x: 1170, w: 250, far: false },
-  ];
-  roofs.forEach((r) => {
-    const col = r.far ? theme.decoFar : theme.decoNear;
-    const baseY = GAME_H - (r.far ? 150 : 120);
-    // Wall block under the roof.
-    k.add([k.rect(r.w - 90, 180), k.pos(r.x, baseY), k.anchor("top"), k.color(...col), k.fixed(), k.z(-96)]);
-    // Upturned pagoda roof (a wide trapezoid).
-    k.add([
-      k.polygon([k.vec2(-r.w / 2, 0), k.vec2(r.w / 2, 0), k.vec2(r.w / 2 - 46, -76), k.vec2(-r.w / 2 + 46, -76)]),
-      k.pos(r.x, baseY),
-      k.color(...col),
-      k.fixed(),
-      k.z(-95),
-    ]);
-    // A small finial on the ridge.
-    k.add([k.rect(8, 26), k.pos(r.x, baseY - 76), k.anchor("bot"), k.color(...col), k.fixed(), k.z(-95)]);
-  });
 }
 
 // Floating ambient motes that drift upward, gently sway, and twinkle — used for the
@@ -360,33 +287,9 @@ function drawMotes(theme) {
   }
 }
 
-// Snowy peaks + falling snow for the alpine level.
-function drawSnow(theme) {
-  const peaks = [
-    { x: 220, w: 540, h: 360, far: true },
-    { x: 690, w: 620, h: 440, far: false },
-    { x: 1150, w: 560, h: 380, far: true },
-  ];
-  const baseY = GAME_H - 120;
-  peaks.forEach((p) => {
-    const col = p.far ? theme.decoFar : theme.decoNear;
-    k.add([
-      k.polygon([k.vec2(-p.w / 2, 0), k.vec2(p.w / 2, 0), k.vec2(0, -p.h)]),
-      k.pos(p.x, baseY),
-      k.color(...col),
-      k.fixed(),
-      k.z(-95),
-    ]);
-    // Bright snow cap near the summit.
-    k.add([
-      k.polygon([k.vec2(-58, 0), k.vec2(58, 0), k.vec2(0, -88)]),
-      k.pos(p.x, baseY - p.h + 88),
-      k.color(240, 248, 255),
-      k.fixed(),
-      k.z(-94),
-    ]);
-  });
-  // Falling snowflakes.
+// Falling snow for the alpine level (extracted from the old drawSnow; the peaks now live in
+// the snow_mid/near parallax images).
+function drawSnowflakes() {
   for (let i = 0; i < 40; i++) {
     const speed = k.rand(22, 56);
     const drift = k.rand(-14, 14);
