@@ -116,6 +116,14 @@ export const PHYSICS = {
   FALL_MULT: 1.6,   // extra gravity factor while descending (asymmetric arc)
   COYOTE_TIME: 0.1, // grace window (s) to still jump just after leaving a ledge
   JUMP_BUFFER: 0.1, // window (s) a jump press is remembered before landing
+  STOMP_BOUNCE: 520, // upward velocity after stomping an enemy (Mario-style hop, < JUMP_FORCE)
+};
+
+// Points (spec: Mario-style scoring). A collected pickup and a stomped enemy each add to the
+// running journey score (src/state.js), shown in the HUD and the end-of-level reward.
+export const SCORE = {
+  PICKUP: 100, // golden apple / pearl / lantern / crystal
+  STOMP: 200,  // defeating an enemy by jumping on it
 };
 
 // Asset manifest — the swap point. Replace files in /assets and, if an extension

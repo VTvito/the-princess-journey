@@ -7,6 +7,7 @@ import { MAX_LEVEL } from "./config.js";
 const KEYS = {
   character: "pj.character",
   level: "pj.currentLevel",
+  score: "pj.score",
 };
 
 function read(key) {
@@ -30,7 +31,12 @@ function write(key, value) {
 const state = {
   selectedCharacter: read(KEYS.character) || null,
   currentLevel: clampLevel(parseInt(read(KEYS.level) || "1", 10)),
+  score: clampScore(parseInt(read(KEYS.score) || "0", 10)),
 };
+
+function clampScore(n) {
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
 
 function clampLevel(n) {
   if (!Number.isFinite(n) || n < 1) return 1;
@@ -55,13 +61,34 @@ export function setCurrentLevel(n) {
   write(KEYS.level, String(state.currentLevel));
 }
 
+// --- Journey score (Mario-style) ---------------------------------------------
+// Accumulates across the playthrough (pickups + stomps) and persists like progress, so a
+// reload keeps it. Reset when a brand-new game starts ("Nuova partita"), not on a per-level
+// respawn (retries re-collect, like an arcade).
+export function getScore() {
+  return state.score;
+}
+
+export function addScore(amount) {
+  state.score = clampScore(state.score + amount);
+  write(KEYS.score, String(state.score));
+  return state.score;
+}
+
+export function resetScore() {
+  state.score = 0;
+  write(KEYS.score, "0");
+}
+
 // Wipe saved progress (handy for a future "reset" button / testing).
 export function resetProgress() {
   state.selectedCharacter = null;
   state.currentLevel = 1;
+  state.score = 0;
   try {
     window.localStorage.removeItem(KEYS.character);
     window.localStorage.removeItem(KEYS.level);
+    window.localStorage.removeItem(KEYS.score);
   } catch {
     // no-op
   }

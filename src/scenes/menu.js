@@ -9,6 +9,7 @@ import {
   getSelectedCharacter,
   getCurrentLevel,
   setCurrentLevel,
+  resetScore,
 } from "../state.js";
 import { getLevelDef } from "../levels/index.js";
 import { fadeToScene } from "../ui/transition.js";
@@ -222,6 +223,7 @@ export function registerMenuScene() {
         if (!chooserActive) return; // ignore the click that opened the chooser
         setSelectedCharacter(char.id);
         setCurrentLevel(1);   // "Nuova partita" always begins the journey from level 1
+        resetScore();         // a fresh journey starts from zero points
         playBgm("game-bgm", 0.32); // switch to the gameplay track within this gesture
         sfx("select");
         fadeToScene(() => k.go("game"));

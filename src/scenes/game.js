@@ -11,11 +11,19 @@ import {
   PALETTE,
   CHARACTERS,
   PHYSICS,
+  SCORE,
   MAX_LEVEL,
   unlockedSkinKeys,
   skinUnlockedBy,
 } from "../config.js";
-import { getSelectedCharacter, getCurrentLevel, setCurrentLevel, addCoccoline } from "../state.js";
+import {
+  getSelectedCharacter,
+  getCurrentLevel,
+  setCurrentLevel,
+  addCoccoline,
+  addScore,
+  getScore,
+} from "../state.js";
 import { bindKeyboard, resetInput } from "../controls.js";
 import { makePlayer } from "../entities/player.js";
 import { getLevelDef, hasLevel } from "../levels/index.js";
@@ -111,12 +119,24 @@ export function registerGameScene() {
     player.onUpdate(() => {
       if (!finished && !dead && player.pos.y > worldH + 120) die();
     });
-    // Touched a static hazard (thorns / urchins / icicle) or a moving enemy (crab / flyer).
+    // Touched a static hazard (thorns / urchins / icicle) → always respawn.
     player.onCollide("hazard", () => {
       if (!finished && !dead) die();
     });
-    player.onCollide("enemy", () => {
-      if (!finished && !dead) die();
+    // Moving enemy (crab / flyer): Mario-style stomp. Coming DOWN onto it from above defeats
+    // the enemy with a hop + points; any other contact (side / from below) still respawns.
+    player.onCollide("enemy", (enemy) => {
+      if (finished || dead) return;
+      const stomping = player.vel.y > 60 && player.pos.y < enemy.pos.y;
+      if (stomping) {
+        confettiBurst(enemy.pos, [theme.collectible, PALETTE.cream, PALETTE.gold]);
+        sfx("jump"); // springy bounce off the foe
+        k.destroy(enemy);
+        player.vel.y = -PHYSICS.STOMP_BOUNCE; // bounce back up
+        bumpScore(SCORE.STOMP);
+      } else {
+        die();
+      }
     });
 
     // --- HUD (fixed; ignores the camera) ---
@@ -137,6 +157,19 @@ export function registerGameScene() {
       k.fixed(),
       k.z(50),
     ]);
+    // Running journey score (Mario-style): pickups + stomps. Persists across levels.
+    const scoreLabel = k.add([
+      k.text(`★ ${getScore()}`, { size: 22 }),
+      k.pos(GAME_W - 24, 54),
+      k.anchor("topright"),
+      k.color(...hudColor),
+      k.fixed(),
+      k.z(50),
+    ]);
+    const bumpScore = (amount) => {
+      addScore(amount);
+      scoreLabel.text = `★ ${getScore()}`;
+    };
 
     // --- Collectibles (golden apples / pearls) ---
     let collected = 0;
@@ -152,6 +185,7 @@ export function registerGameScene() {
       k.destroy(item);
       collected += 1;
       itemLabel.text = `${icon} ${collected}/${collectiblesTotal}`;
+      bumpScore(SCORE.PICKUP);
     });
 
     // --- Goal: unlock a skin, advance progress, continue to the next level ---
@@ -363,7 +397,7 @@ function showReward(reward, got, total, icon, nextLevel) {
     ]);
   }
   k.add([
-    k.text(`${icon} ${got}/${total}`, { size: 26 }),
+    k.text(`${icon} ${got}/${total}    ★ ${getScore()}`, { size: 26 }),
     k.pos(GAME_W / 2, GAME_H / 2 + 56),
     k.anchor("center"),
     k.color(...PALETTE.cream),

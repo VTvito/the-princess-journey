@@ -51,15 +51,15 @@ export const LEVEL_1 = {
   map: composeMap({
     width: 120,
     ravines: [{ x: 22, w: 2 }, { x: 46, w: 2 }, { x: 70, w: 2 }, { x: 94, w: 2 }],
-    // Floating platforms that bridge three of the ravines at row 7 (top ≈ y448). They sit
-    // where the lane has NO ground, so they don't block the heroine's head while running
-    // (a platform over solid lane would: she's ~92px tall, taller than the 56px gap between
-    // her jump apex and head clearance). The full jump (apex ≈ y428) just clears the platform
-    // top, so the ravine hop now lands ON the platform — and a bonus apple waits just above.
+    // Floating platforms that bridge three of the ravines at row 8 / LANE (top ≈ y512). They
+    // sit one tile above the (missing) ground, where the lane has no floor — so they don't
+    // block the heroine's head while running (she's ~92px tall). The ravine hop lands ON the
+    // bridge with a generous margin (jump apex ≈ y428, well above the y512 top), then a bonus
+    // apple waits just above. A raised, robust stepping-bridge — friendly for both human + bot.
     platforms: [
-      { x: 46, y: 7, w: 2 },
-      { x: 70, y: 7, w: 2 },
-      { x: 94, y: 7, w: 2 },
+      { x: 46, y: LANE, w: 2 },
+      { x: 70, y: LANE, w: 2 },
+      { x: 94, y: LANE, w: 2 },
     ],
     items: [
       { x: 2, y: LANE, ch: "@" }, // spawn
@@ -70,13 +70,11 @@ export const LEVEL_1 = {
       { x: 58, y: LANE, ch: "^" },
       { x: 82, y: LANE, ch: "^" },
       { x: 106, y: LANE, ch: "^" },
-      // Apples along the run, grabbed mid-jump. Split by row so none land on a row-7 bridge
-      // platform cell (composeMap lets items overwrite platforms, so we keep them clear of
-      // x=46/70/94 at row 7). Row 6 ≈ y384, row 7 ≈ y448.
-      ...arcCollectibles([8, 22, 40, 54, 70, 88, 102], [6]),
-      ...arcCollectibles([16, 30, 62, 78, 110], [7]),
-      // Bonus apples just above the ravine platforms (row 5 ≈ y352): grabbed as you hop up
-      // onto the platform — an optional reward, never on the critical ground path.
+      // Apples along the run + over the ravines (grabbed mid-jump). Rows 6–7 are above the
+      // row-8 bridges, so nothing overwrites a platform cell.
+      ...arcCollectibles([8, 16, 22, 30, 40, 46, 54, 62, 70, 78, 88, 94, 102, 110]),
+      // Bonus apples just above the ravine bridges (row 5 ≈ y352): an easy grab once you've
+      // hopped up onto the bridge — an optional reward, off the critical ground path.
       { x: 46, y: 5, ch: "o" },
       { x: 70, y: 5, ch: "o" },
       { x: 94, y: 5, ch: "o" },
