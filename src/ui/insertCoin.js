@@ -22,6 +22,9 @@ export function showInsertCoin(onContinue) {
   // Assign (not addEventListener) so repeated deaths never stack handlers.
   button.onclick = () => {
     hideInsertCoin();
+    // Hand keyboard focus back to the canvas: clicking this DOM button took it, and without
+    // restoring it the keys would be dead after respawn (the game scene also re-focuses).
+    document.getElementById("game")?.focus();
     onContinue?.();
   };
 }

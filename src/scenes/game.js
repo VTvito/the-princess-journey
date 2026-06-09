@@ -33,6 +33,13 @@ function setCam(p) {
   else k.camPos(p);
 }
 
+// Give the game canvas keyboard focus (so keys work after a DOM-overlay respawn). The
+// canvas carries tabindex="0" (index.html) so it can hold focus.
+function focusCanvas() {
+  const canvas = k.canvas || (typeof document !== "undefined" && document.getElementById("game"));
+  canvas?.focus?.();
+}
+
 export function registerGameScene() {
   k.scene("game", () => {
     // Defensive: clear any DOM overlay left over from another scene.
@@ -56,6 +63,10 @@ export function registerGameScene() {
     k.setGravity(PHYSICS.GRAVITY);
     resetInput(); // no direction carried in from the menu
     bindKeyboard(); // scene-scoped; touch buttons were bound once at startup
+    // Return keyboard focus to the canvas. The "Insert Coin" overlay is a DOM button, so
+    // clicking it to respawn moves focus off the canvas — without this, keys silently stop
+    // working after a restart ("the heroine won't start"). See src/ui/insertCoin.js too.
+    focusCanvas();
     playBgm("game-bgm", 0.32); // gameplay music (idempotent: a level restart won't restart it)
 
     drawBackground(theme);
@@ -72,7 +83,9 @@ export function registerGameScene() {
     const maxCamX = Math.max(halfW, worldW - halfW);
     k.onUpdate(() => {
       const cx = Math.min(Math.max(player.pos.x, halfW), maxCamX);
-      setCam(k.vec2(cx, GAME_H / 2));
+      // Round to whole pixels: with crisp/nearest-neighbour sampling, a fractional camera
+      // makes tiles/sprites shimmer ("scattoso") as they cross sample boundaries.
+      setCam(k.vec2(Math.round(cx), GAME_H / 2));
     });
 
     // --- Failure flow (spec §1: no silent respawn — every failure accrues a debt) ---
@@ -226,7 +239,7 @@ function drawParallax(decor) {
       tiles.forEach((t) => {
         let x = (t.baseX - shift) % span;
         if (x < 0) x += span; // wrap into [0, span)
-        t.pos.x = x - imgW; // one strip of lead-in off the left edge
+        t.pos.x = Math.round(x - imgW); // whole pixels (no shimmer); lead-in off the left edge
       });
     });
   });

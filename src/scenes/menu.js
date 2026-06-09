@@ -159,7 +159,7 @@ export function registerMenuScene() {
     ]);
 
     const cardW = 300;
-    const cardH = 360;
+    const cardH = 400; // tall enough that the wrapped romantic description sits inside the card
     const gap = 60;
     const totalW = CHARACTERS.length * cardW + (CHARACTERS.length - 1) * gap;
     const startX = (GAME_W - totalW) / 2 + cardW / 2;
@@ -202,11 +202,11 @@ export function registerMenuScene() {
       ]);
 
       card.add([
-        k.text(char.description, { size: 16, width: cardW - 40, align: "center" }),
+        k.text(char.description, { size: 17, width: cardW - 36, align: "center", lineSpacing: 4 }),
         k.anchor("center"),
-        k.pos(0, 130),
+        k.pos(0, 138),
         k.color(...PALETTE.deepBlue),
-        k.opacity(0.75),
+        k.opacity(0.8),
       ]);
 
       card.onHover(() => {

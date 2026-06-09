@@ -25,7 +25,9 @@ export const CHARACTERS = [
     id: "anna",
     name: "Anna",
     tagline: "La Protagonista",
-    description: "Capelli castani mossi, piumino carta da zucchero, jeans e sneakers.",
+    // Romantic one-liner shown on the selection card (keep it short + bracket-free — k.text
+    // crashes on tokens like [x]). Edit freely.
+    description: "Dolce e coraggiosa, conquista ogni cuore al primo sguardo.",
     sprite: "anna",
     color: PALETTE.sky,
   },
@@ -33,7 +35,7 @@ export const CHARACTERS = [
     id: "sognatrice",
     name: "La Sognatrice",
     tagline: "Stile paesana",
-    description: "Romantica e gentile, ispirata a Belle e Ariel.",
+    description: "Sogna l'amore vero tra le onde e le rose.",
     sprite: "sognatrice",
     color: [240, 198, 116],
   },
@@ -41,7 +43,7 @@ export const CHARACTERS = [
     id: "avventuriera",
     name: "L'Avventuriera",
     tagline: "Stile nomade",
-    description: "Coraggiosa viaggiatrice, ispirata a Jasmine e Mulan.",
+    description: "Il suo cuore libero corre dove la porta il vento.",
     sprite: "avventuriera",
     color: [196, 122, 88],
   },
@@ -104,13 +106,9 @@ export const FINALE = {
 // numbers and difficulty is easy to tweak. Units: px and px/s.
 export const PHYSICS = {
   GRAVITY: 1800,    // base downward acceleration (px/s²)
-  // Horizontal feel: instead of an instant on/off velocity, the player ramps a private vx
-  // toward a target at ACCEL (turning/starting) or DECEL (releasing), with reduced control
-  // in the air (AIR_ACCEL). This gives inertia/slide without changing the top speed.
-  RUN_SPEED: 320,   // target horizontal run speed (px/s) — preserves the old MOVE_SPEED reach
-  ACCEL: 2600,      // ground ramp toward the target (px/s²)
-  DECEL: 3200,      // ground friction when no direction is held (px/s²)
-  AIR_ACCEL: 1600,  // reduced air control (px/s²)
+  // Horizontal feel: instant on/off velocity (no inertia/slide) for tight Mario-style control
+  // — the heroine reaches full speed and stops at once, on the ground and in the air.
+  RUN_SPEED: 320,   // horizontal run speed (px/s)
   // Vertical feel: a snappy hop with variable height (release early = lower) and a faster
   // fall than rise (asymmetric arc, Mario-style), plus small forgiveness windows.
   JUMP_FORCE: 730,  // initial upward velocity on jump (px/s); clears thorns + 2-cell ravines

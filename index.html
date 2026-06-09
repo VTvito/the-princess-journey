@@ -14,8 +14,10 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <!-- Kaplay renders here; it letterboxes the 16:9 canvas inside the viewport. -->
-    <canvas id="game"></canvas>
+    <!-- Kaplay renders here; it letterboxes the 16:9 canvas inside the viewport.
+         tabindex makes the canvas focusable so keyboard input keeps working after the DOM
+         "Insert Coin" overlay steals focus on respawn (see src/scenes/game.js focusCanvas). -->
+    <canvas id="game" tabindex="0"></canvas>
 
     <!-- Shown only when a touch device is held in portrait (CSS-driven). -->
     <div id="rotate-overlay">

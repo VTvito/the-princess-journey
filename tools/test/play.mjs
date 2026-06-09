@@ -14,9 +14,16 @@
 //   • JUMP when a ravine, a lane hazard (thorn/urchin/spike), or a ground enemy (crab) is
 //     just ahead — but NOT when an air enemy (flyer) hangs ahead, so it runs underneath;
 //   • WAIT (stop) while a stalactite is dropping in the column ahead, then resume.
-// On death it banks the "Insert Coin" overlay to retry from the spawn. It pokes the input
-// object rather than firing synthetic key events, so it stays robust across the scene
-// rebuilds a respawn triggers.
+// On death it banks the "Insert Coin" overlay to retry from the spawn.
+//
+// IS THIS A LEGITIMATE "PLAYER"? Yes. The bot writes ONLY the virtual-input flags
+// (left/right/jump/jumpHeld) on window.__pj.input — the exact same object the keyboard
+// handlers populate (src/controls.js). Every move therefore goes through the real physics,
+// collision, jump-arc and respawn code, identically to a human pressing keys. The bot never
+// writes player.pos or player.vel: it does NOT teleport, set speed, or otherwise cheat — it
+// only decides which "buttons" to hold. The single difference from a human is that it sets
+// the flags directly instead of dispatching synthetic key events (this keeps it robust across
+// the scene rebuilds a respawn triggers). assertInputContract() below enforces that invariant.
 //
 // Why Edge + playwright-core: see the project memory notes (playwright-testing-setup) and the
 // sibling smoke.mjs / levels.mjs.
@@ -122,6 +129,27 @@ const tick = (page) =>
     return out;
   });
 
+// Anti-cheat invariant: the input object the bot drives must expose ONLY the four virtual
+// buttons, and window.__pj must not hand out a way to write the player's position/velocity.
+// If this ever fails, the "autoplay" would no longer be playing the way a human can — the
+// test should be fixed (or the leak removed) rather than silently driving the game unfairly.
+async function assertInputContract(page) {
+  const report = await page.evaluate(() => {
+    const pj = window.__pj;
+    const allowed = ["left", "right", "jump", "jumpHeld"];
+    const keys = Object.keys(pj.input);
+    const extra = keys.filter((kk) => !allowed.includes(kk));
+    return { keys, extra, pjKeys: Object.keys(pj) };
+  });
+  if (report.extra.length) {
+    throw new Error(`autoplay input contract broken — unexpected input fields: ${report.extra.join(", ")}`);
+  }
+  // __pj is a dev handle; it should not expose player pos/vel writers to the driver.
+  if (report.pjKeys.some((kk) => /pos|vel|setpos|teleport/i.test(kk))) {
+    throw new Error(`autoplay handle leaks position/velocity control: ${report.pjKeys.join(", ")}`);
+  }
+}
+
 async function bootMenu(page) {
   await page.waitForFunction(
     () => window.__pj?.k && window.__pj.k.getSceneName() === "menu",
@@ -221,6 +249,7 @@ try {
 
   await page.goto(TARGET, { waitUntil: "domcontentloaded", timeout: BOOT_TIMEOUT });
   await bootMenu(page);
+  await assertInputContract(page); // fail fast if the bot could cheat / drives the wrong thing
 
   for (const n of LEVELS) {
     const r = await playLevel(page, n);
