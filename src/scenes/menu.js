@@ -119,7 +119,8 @@ export function registerMenuScene() {
         label: resumeFinale ? "↻  Rivedi il Gran Ballo" : `↻  Riprendi · Livello ${savedLevel}`,
         onClick: () => {
           // Start the destination's track within this gesture (unlocks the AudioContext).
-          playBgm(resumeFinale ? "menu-bgm" : "game-bgm", resumeFinale ? 0.34 : 0.32);
+          if (resumeFinale) playBgm("finale-bgm", 0.34);
+          else playBgm(`bgm-${getLevelDef(savedLevel).theme.decor}`, 0.32);
           sfx("select");
           fadeToScene(() => k.go(resumeFinale ? "finale" : "game")); // keeps char + level
         },
@@ -226,7 +227,7 @@ export function registerMenuScene() {
         setSelectedCharacter(char.id);
         setCurrentLevel(1);   // "Nuova partita" always begins the journey from level 1
         resetScore();         // a fresh journey starts from zero points
-        playBgm("game-bgm", 0.32); // switch to the gameplay track within this gesture
+        playBgm("bgm-forest", 0.32); // level 1's track, started within this gesture
         sfx("select");
         fadeToScene(() => k.go("game"));
       });

@@ -106,9 +106,13 @@ export const FINALE = {
 // numbers and difficulty is easy to tweak. Units: px and px/s.
 export const PHYSICS = {
   GRAVITY: 1800,    // base downward acceleration (px/s²)
-  // Horizontal feel: instant on/off velocity (no inertia/slide) for tight Mario-style control
-  // — the heroine reaches full speed and stops at once, on the ground and in the air.
+  // Horizontal feel: near-instant velocity with a micro acceleration ramp. ACCEL_TIME is
+  // imperceptible to the hand (the old instant feel survives) but gives the run animation
+  // a lean-in, makes skids detectable, and lets ice levels use a longer ramp. Set to 0 to
+  // restore the exact old instant behavior.
   RUN_SPEED: 320,   // horizontal run speed (px/s)
+  ACCEL_TIME: 0.06, // seconds from standstill to full speed (and back)
+  SKID_MIN: 200,    // |vx| above this when reversing direction → skid dust puff
   // Vertical feel: a snappy hop with variable height (release early = lower) and a faster
   // fall than rise (asymmetric arc, Mario-style), plus small forgiveness windows.
   JUMP_FORCE: 730,  // initial upward velocity on jump (px/s); clears thorns + 2-cell ravines
@@ -117,6 +121,13 @@ export const PHYSICS = {
   COYOTE_TIME: 0.1, // grace window (s) to still jump just after leaving a ledge
   JUMP_BUFFER: 0.1, // window (s) a jump press is remembered before landing
   STOMP_BOUNCE: 520, // upward velocity after stomping an enemy (Mario-style hop, < JUMP_FORCE)
+};
+
+// Camera feel (spec §2): the camera leads the heroine in her facing direction so she sees
+// where she's going (Mario-style), easing toward the target instead of snapping.
+export const CAMERA = {
+  LOOKAHEAD: 90, // px ahead of the heroine in the facing direction
+  EASE: 4,       // easing rate (1 - exp(-dt * EASE) per frame)
 };
 
 // Points (spec: Mario-style scoring). A collected pickup and a stomped enemy each add to the
@@ -197,10 +208,15 @@ export const ASSETS = {
     snow_near: "assets/backgrounds/snow_near.png",
   },
   sounds: {
-    // Background music, played on the Music bus (src/audio.js). Menu = gentle waltz,
-    // gameplay = a softer, airier loop. The 🎵 toggle mutes these independently of SFX.
+    // Background music, played on the Music bus (src/audio.js): the menu waltz, one
+    // chiptune track per level theme (game.js plays `bgm-${theme.decor}`), and the grand
+    // finale waltz. The 🎵 toggle mutes these independently of SFX.
     "menu-bgm": "assets/audio/menu-bgm.wav",
-    "game-bgm": "assets/audio/game-bgm.wav",
+    "finale-bgm": "assets/audio/finale-bgm.wav",
+    "bgm-forest": "assets/audio/bgm-forest.wav",
+    "bgm-coral": "assets/audio/bgm-coral.wav",
+    "bgm-rooftops": "assets/audio/bgm-rooftops.wav",
+    "bgm-snow": "assets/audio/bgm-snow.wav",
     // Gameplay SFX (spec §3/§4) — synthesized, played via src/sfx.js on the SFX bus so the
     // 🔊 toggle mutes them independently of the music. Swap the files keeping these keys.
     jump: "assets/audio/jump.wav",
@@ -210,5 +226,10 @@ export const ASSETS = {
     goal: "assets/audio/goal.wav",
     win: "assets/audio/win.wav",
     select: "assets/audio/select.wav",
+    stomp: "assets/audio/stomp.wav",
+    spring: "assets/audio/spring.wav",
+    checkpoint: "assets/audio/checkpoint.wav",
+    crumble: "assets/audio/crumble.wav",
+    skid: "assets/audio/skid.wav",
   },
 };

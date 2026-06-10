@@ -65,7 +65,15 @@ try {
   }));
   check("music toggle → on", !mu2.muted && mu2.ls === "1", JSON.stringify(mu2));
 
-  // --- Enter gameplay (force the scene; char defaults to the first heroine) ---
+  // --- Enter gameplay on Livello 2 (it has crabs — needed for the stomp checks below).
+  // state.js reads localStorage at module init, so pin the level and reload first. ---
+  await page.evaluate(() => localStorage.setItem("pj.currentLevel", "2"));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    () => window.__pj?.k && window.__pj.k.getSceneName() === "menu",
+    null,
+    { timeout: T, polling: 100 },
+  );
   await page.evaluate(() => window.__pj.k.go("game"));
   await page.waitForFunction(
     () => window.__pj.k.getSceneName() === "game" && window.__pj.k.get("player").length > 0,
@@ -84,7 +92,10 @@ try {
   // is a user gesture, so the AudioContext is unlocked and these silent probes stay quiet. ---
   const sfxMissing = await page.evaluate(() => {
     const k = window.__pj.k;
-    const names = ["jump", "collect", "coin", "oops", "goal", "win", "select"];
+    const names = [
+      "jump", "collect", "coin", "oops", "goal", "win", "select",
+      "stomp", "spring", "checkpoint", "crumble", "skid",
+    ];
     const missing = [];
     for (const n of names) {
       try {
@@ -100,7 +111,7 @@ try {
   check(
     "sfx assets load + play",
     sfxMissing.length === 0,
-    sfxMissing.length ? `missing: ${sfxMissing.join(",")}` : "7/7",
+    sfxMissing.length ? `missing: ${sfxMissing.join(",")}` : "12/12",
   );
 
   // Movement (held key → Δx) and jump (apex Δy upward), plus the animation state machine
@@ -108,22 +119,55 @@ try {
   const px = () => page.evaluate(() => window.__pj.k.get("player")[0].pos.x);
   const py = () => page.evaluate(() => window.__pj.k.get("player")[0].pos.y);
   const anim = () => page.evaluate(() => window.__pj.k.get("player")[0].curAnim());
+  // Hold right and WAIT for actual displacement instead of a fixed timeout — decoding the
+  // music WAVs can stall the first frames after boot and eat a fixed-length key window.
   const x0 = await px();
   await page.keyboard.down("ArrowRight");
-  await page.waitForTimeout(250);
-  const runAnim = await anim(); // sampled while the key is still held
-  await page.waitForTimeout(150);
+  const moved = await page
+    .waitForFunction((sx) => window.__pj.k.get("player")[0].pos.x > sx + 60, x0, {
+      timeout: 4000,
+      polling: 50,
+    })
+    .then(() => true)
+    .catch(() => false);
+  const runAnim = await anim(); // sampled while the key is still held and she's moving
   await page.keyboard.up("ArrowRight");
-  check("player moves right", (await px()) - x0 > 30, `dx=${((await px()) - x0).toFixed(1)}`);
+  check("player moves right", moved, `dx=${((await px()) - x0).toFixed(1)}`);
   check("run anim while moving", runAnim === "run", `anim=${runAnim}`);
 
+  // HOLD the jump (a bare press releases at a driver-dependent instant, and the variable-
+  // height cut then makes the measured rise flaky); a 150ms hold guarantees a full arc.
   const yGround = await py();
-  await page.keyboard.press("Space");
-  await page.waitForTimeout(180); // sample near apex
+  await page.keyboard.down("Space");
+  await page.waitForTimeout(150);
+  const airAnim = await anim(); // sampled mid-rise while still holding
+  await page.keyboard.up("Space");
+  await page.waitForTimeout(60); // ~apex
   const yApex = await py();
-  const airAnim = await anim(); // a tap cuts the rise, so apex may already read "fall"
-  check("player jumps", yGround - yApex > 30, `dy=${(yGround - yApex).toFixed(1)}`);
-  check("air anim while jumping", airAnim === "jump" || airAnim === "fall", `anim=${airAnim}`);
+  check("player jumps", yGround - yApex > 60, `dy=${(yGround - yApex).toFixed(1)}`);
+  check("air anim while jumping", airAnim === "jump", `anim=${airAnim}`);
+
+  // --- Mario-style stomp + hit-stop: drop the heroine onto a crab; the enemy must die
+  // and debug.timeScale must come back to 1 (a stranded hit-stop would slow-motion the
+  // whole game). This is a feature probe, not bot play, so teleporting is fair game. ---
+  const stomp = await page.evaluate(async () => {
+    const k = window.__pj.k;
+    const player = k.get("player")[0];
+    const crab = k.get("enemy")[0];
+    if (!crab) return { ok: false, why: "no enemy found on level 2" };
+    const before = k.get("enemy").length;
+    player.pos.x = crab.pos.x;
+    player.pos.y = crab.pos.y - 90;
+    player.vel.y = 200; // falling onto it → the stomp branch
+    await new Promise((r) => setTimeout(r, 600)); // real time — unaffected by hit-stop
+    return {
+      ok: k.get("enemy").length === before - 1,
+      enemies: `${before}→${k.get("enemy").length}`,
+      timeScale: k.debug.timeScale,
+    };
+  });
+  check("stomp defeats the enemy", stomp.ok, stomp.why || stomp.enemies);
+  check("hit-stop restores time", stomp.timeScale === 1, `timeScale=${stomp.timeScale}`);
 
   // --- §1 Insert Coin: falling off the world shows the DOM overlay (not Kaplay) ---
   await page.evaluate(() => (window.__pj.k.get("player")[0].pos.y = 999999));

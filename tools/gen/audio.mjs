@@ -1,8 +1,13 @@
-// audio.mjs — synthesized WAV music + SFX (ported unchanged from the old generator;
-// the chiptune sequencer upgrade lands in a later phase). Simple oscillators with short
-// anti-click fades and optional exponential decay, mixed and normalized, 22050 Hz mono.
+// audio.mjs — chiptune music + synthesized SFX (WAV, 22050 Hz mono).
+//
+// A small pattern sequencer in the 16-bit console spirit: 2 pulse/triangle melodic
+// channels + a bass channel + an LFSR-ish noise percussion channel, with a single echo
+// tap for air. Six songs (menu waltz, grand finale waltz, one per level theme) are
+// defined as note data below; everything renders deterministically.
 
 export const SFX_RATE = 22050;
+
+// --- oscillators / primitives -------------------------------------------------------
 
 function osc(phase, wave) {
   if (wave === "tri") return (2 / Math.PI) * Math.asin(Math.sin(phase));
@@ -32,6 +37,23 @@ export function tone(freq, dur, { vol = 0.5, wave = "sine", decay = 0, fEnd = nu
   return out;
 }
 
+// Deterministic white noise with an exponential envelope (percussion / impacts). The
+// `soft` flag low-passes it (two-sample average) for hats vs harsher crashes.
+export function noise(dur, { vol = 0.5, decay = 12, soft = false, sr = SFX_RATE } = {}) {
+  const n = Math.max(1, Math.floor(dur * sr));
+  const out = new Array(n);
+  let s = 1234567;
+  let prev = 0;
+  for (let i = 0; i < n; i++) {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    let v = (s / 0x7fffffff) * 2 - 1;
+    if (soft) v = (v + prev) / 2;
+    prev = v;
+    out[i] = v * vol * Math.exp(-decay * (i / sr)) * Math.min(1, (n - i) / 64);
+  }
+  return out;
+}
+
 export const seq = (...parts) => parts.flat();
 
 export function mix(...parts) {
@@ -48,6 +70,223 @@ export function normalize(samples, peak = 0.85) {
   const g = peak / m;
   return samples.map((s) => s * g);
 }
+
+// --- note names → Hz ------------------------------------------------------------------
+
+const SEMI = { C: -9, "C#": -8, D: -7, "D#": -6, E: -5, F: -4, "F#": -3, G: -2, "G#": -1, A: 0, "A#": 1, B: 2 };
+function noteHz(name) {
+  const m = /^([A-G]#?)(\d)$/.exec(name);
+  if (!m) throw new Error(`bad note: ${name}`);
+  return 440 * Math.pow(2, (SEMI[m[1]] + (Number(m[2]) - 4) * 12) / 12);
+}
+
+// --- sequencer --------------------------------------------------------------------------
+
+// A track is [[note|null, beats], …]; null = rest. Renders sequentially at the song tempo.
+function renderTrack(notes, beat, { wave = "tri", vol = 0.4, decay = 2 } = {}) {
+  return seq(...notes.map(([n, b]) => tone(n ? noteHz(n) : 0, beat * b, { wave, vol: n ? vol : 0, decay })));
+}
+
+// Percussion: one char per half-beat — k kick, h hat, s snare/brush, "." rest.
+function renderPerc(pattern, beat, vol = 1) {
+  const half = beat / 2;
+  const hit = {
+    k: () => mix(tone(110, Math.min(half, 0.1), { vol: 0.5 * vol, fEnd: 45, decay: 28 })),
+    h: () => noise(Math.min(half, 0.05), { vol: 0.16 * vol, decay: 70 }),
+    s: () => noise(Math.min(half, 0.1), { vol: 0.26 * vol, decay: 30, soft: true }),
+  };
+  return seq(
+    ...[...pattern].map((c) => {
+      const part = hit[c] ? hit[c]() : [];
+      const cell = new Array(Math.floor(half * SFX_RATE)).fill(0);
+      for (let i = 0; i < part.length && i < cell.length; i++) cell[i] = part[i];
+      return cell;
+    }),
+  );
+}
+
+// One echo tap (delay + feedback-less) — cheap chiptune "air".
+function echo(samples, delaySec = 0.22, gain = 0.22) {
+  const d = Math.floor(delaySec * SFX_RATE);
+  const out = samples.slice();
+  for (let i = d; i < out.length; i++) out[i] += samples[i - d] * gain;
+  return out;
+}
+
+// Assemble a song: melodic tracks + optional percussion, echo, normalize.
+function song({ bpm, tracks, perc = null, percVol = 1, air = 0.22, peak = 0.6 }) {
+  const beat = 60 / bpm;
+  const parts = tracks.map(({ notes, ...opts }) => renderTrack(notes, beat, opts));
+  if (perc) parts.push(renderPerc(perc, beat, percVol));
+  return normalize(echo(mix(...parts), air), peak);
+}
+
+// Repeat a pattern of [note,beats] n times; small helper to keep song data compact.
+const rep = (n, pat) => Array.from({ length: n }, () => pat).flat();
+
+// --- the six songs -----------------------------------------------------------------------
+
+// Menu: the light music-box waltz (3/4), now with a proper oom-pah-pah under it. ~16s.
+export function buildMenuMusic() {
+  const lead = [
+    ["G4", 1], ["C5", 1], ["E5", 1], ["D5", 1], ["C5", 1], ["E5", 1],
+    ["G4", 1], ["A4", 1], ["C5", 1], ["D5", 3],
+    ["E5", 1], ["D5", 1], ["C5", 1], ["A4", 1], ["G4", 1], ["E4", 1],
+    ["G4", 1], ["C5", 1], ["A4", 1], ["G4", 3],
+    ["E4", 1], ["G4", 1], ["A4", 1], ["C5", 1], ["D5", 1], ["E5", 1],
+    ["D5", 2], ["C5", 1], ["G4", 3],
+  ];
+  const bass = [
+    ...rep(2, [["C3", 1], ["E3", 1], ["G3", 1]]), ...rep(2, [["A2", 1], ["C3", 1], ["E3", 1]]),
+    ...rep(2, [["F2", 1], ["A2", 1], ["C3", 1]]), ...rep(2, [["G2", 1], ["B2", 1], ["D3", 1]]),
+    ...rep(2, [["C3", 1], ["E3", 1], ["G3", 1]]), ["G2", 1], ["B2", 1], ["D3", 1], ["C3", 3],
+  ];
+  return song({
+    bpm: 150,
+    tracks: [
+      { notes: lead, wave: "tri", vol: 0.42, decay: 2.4 },
+      { notes: bass, wave: "sine", vol: 0.3, decay: 1.6 },
+    ],
+    peak: 0.58,
+  });
+}
+
+// Finale: the grand ballroom waltz — fuller voicing, harmony in thirds. ~21s.
+export function buildFinaleMusic() {
+  const lead = [
+    ["E5", 2], ["D5", 1], ["C5", 2], ["E5", 1], ["G5", 3],
+    ["F5", 2], ["E5", 1], ["D5", 3], ["E5", 2], ["C5", 1], ["A4", 3],
+    ["C5", 2], ["D5", 1], ["E5", 2], ["G5", 1], ["A5", 3],
+    ["G5", 2], ["E5", 1], ["D5", 2], ["B4", 1], ["C5", 6],
+  ];
+  const harmony = [
+    ["C5", 2], ["B4", 1], ["A4", 2], ["C5", 1], ["E5", 3],
+    ["D5", 2], ["C5", 1], ["B4", 3], ["C5", 2], ["A4", 1], ["F4", 3],
+    ["A4", 2], ["B4", 1], ["C5", 2], ["E5", 1], ["F5", 3],
+    ["E5", 2], ["C5", 1], ["B4", 2], ["G4", 1], ["E4", 6],
+  ];
+  const bass = [
+    ...rep(2, [["C3", 1], ["G3", 1], ["E3", 1]]), ...rep(2, [["G2", 1], ["D3", 1], ["B2", 1]]),
+    ...rep(2, [["A2", 1], ["E3", 1], ["C3", 1]]), ...rep(2, [["F2", 1], ["C3", 1], ["A2", 1]]),
+    ...rep(2, [["C3", 1], ["G3", 1], ["E3", 1]]), ...rep(2, [["G2", 1], ["D3", 1], ["B2", 1]]),
+    ["C3", 6],
+  ];
+  return song({
+    bpm: 132,
+    tracks: [
+      { notes: lead, wave: "tri", vol: 0.4, decay: 1.6 },
+      { notes: harmony, wave: "sine", vol: 0.22, decay: 1.6 },
+      { notes: bass, wave: "sine", vol: 0.3, decay: 1.2 },
+    ],
+    air: 0.28,
+    peak: 0.6,
+  });
+}
+
+// Forest: pastoral C-pentatonic stroll with a soft brush beat. ~27s.
+export function buildForestMusic() {
+  const lead = [
+    ["E4", 1], ["G4", 1], ["A4", 2], ["G4", 1], ["E4", 1], ["D4", 2],
+    ["C4", 1], ["D4", 1], ["E4", 2], ["G4", 1], ["A4", 1], ["G4", 2],
+    ["A4", 1], ["C5", 1], ["D5", 2], ["C5", 1], ["A4", 1], ["G4", 2],
+    ["E4", 1], ["G4", 1], ["A4", 1], ["G4", 1], ["E4", 1], ["D4", 1], ["C4", 2],
+    [null, 1], ["G4", 1], ["A4", 1], ["C5", 1], ["A4", 2], ["G4", 2],
+    ["E4", 1], ["D4", 1], ["C4", 1], ["D4", 1], ["E4", 4],
+  ];
+  const bass = rep(6, [["C3", 2], ["G3", 2], ["A2", 2], ["G2", 2]]);
+  return song({
+    bpm: 108,
+    tracks: [
+      { notes: lead, wave: "tri", vol: 0.4, decay: 1.8 },
+      { notes: bass, wave: "sine", vol: 0.26, decay: 0.9 },
+    ],
+    perc: rep(12, "k.h.").join(""),
+    percVol: 0.55,
+    peak: 0.56,
+  });
+}
+
+// Coral: slow, watery — long sine phrases over a deep pad, bubbly high arp. ~30s.
+export function buildCoralMusic() {
+  const lead = [
+    ["A4", 3], ["C5", 3], ["B4", 2], ["G4", 4],
+    ["E4", 3], ["G4", 3], ["A4", 6],
+    ["C5", 3], ["E5", 3], ["D5", 2], ["B4", 4],
+    ["A4", 3], ["G4", 3], ["A4", 6],
+  ];
+  const arp = rep(5, [
+    [null, 1], ["E5", 0.5], ["A5", 0.5], [null, 2], ["C6", 0.5], ["A5", 0.5], [null, 3],
+  ]);
+  const bass = rep(2, [["A2", 8], ["F2", 8], ["C3", 8], ["E2", 8]]);
+  return song({
+    bpm: 76,
+    tracks: [
+      { notes: lead, wave: "sine", vol: 0.4, decay: 0.7 },
+      { notes: arp, wave: "sine", vol: 0.14, decay: 5 },
+      { notes: bass, wave: "tri", vol: 0.24, decay: 0.4 },
+    ],
+    air: 0.34,
+    peak: 0.52,
+  });
+}
+
+// Rooftops: dusk pentatonic (hirajoshi flavour) over a drone, thin square lead. ~26s.
+export function buildRooftopsMusic() {
+  const lead = [
+    ["E4", 1], ["G4", 1], ["A4", 2], ["B4", 1], ["A4", 1], ["G4", 2],
+    ["E4", 1], ["G4", 1], ["B4", 2], ["C5", 1], ["B4", 1], ["A4", 2],
+    ["E5", 2], ["D5", 1], ["B4", 1], ["C5", 2], ["B4", 1], ["A4", 1],
+    ["G4", 1], ["A4", 1], ["B4", 1], ["G4", 1], ["E4", 4],
+    [null, 2], ["B4", 1], ["C5", 1], ["E5", 2], ["D5", 1], ["B4", 1],
+    ["A4", 1], ["G4", 1], ["E4", 6],
+  ];
+  const drone = rep(4, [["E2", 6], ["E2", 6]]);
+  return song({
+    bpm: 112,
+    tracks: [
+      { notes: lead, wave: "square", vol: 0.16, decay: 2.2 },
+      { notes: lead, wave: "tri", vol: 0.3, decay: 2.2 }, // doubled an octave-equal for body
+      { notes: drone, wave: "tri", vol: 0.18, decay: 0.3 },
+    ],
+    perc: rep(12, "..h.").join(""),
+    percVol: 0.5,
+    air: 0.3,
+    peak: 0.54,
+  });
+}
+
+// Snow: a tiny music box (3/4) — high bell-like sines with fast decay, very sparse. ~24s.
+export function buildSnowMusic() {
+  const lead = [
+    ["E5", 1], ["G5", 1], ["C6", 1], ["B5", 2], ["G5", 1],
+    ["A5", 1], ["G5", 1], ["E5", 1], ["D5", 3],
+    ["E5", 1], ["G5", 1], ["A5", 1], ["G5", 2], ["E5", 1],
+    ["D5", 1], ["E5", 1], ["C5", 1], ["C5", 3],
+    [null, 3], ["E5", 1], ["D5", 1], ["C5", 1],
+    ["D5", 1], ["E5", 1], ["G5", 1], ["E5", 3],
+  ];
+  const bass = rep(5, [["C3", 1], ["G3", 1], ["E3", 1], ["A2", 1], ["E3", 1], ["C3", 1]]);
+  return song({
+    bpm: 100,
+    tracks: [
+      { notes: lead, wave: "sine", vol: 0.4, decay: 4.5 },
+      { notes: bass, wave: "sine", vol: 0.2, decay: 2.5 },
+    ],
+    air: 0.3,
+    peak: 0.5,
+  });
+}
+
+export const SONGS = {
+  "menu-bgm": buildMenuMusic,
+  "finale-bgm": buildFinaleMusic,
+  "bgm-forest": buildForestMusic,
+  "bgm-coral": buildCoralMusic,
+  "bgm-rooftops": buildRooftopsMusic,
+  "bgm-snow": buildSnowMusic,
+};
+
+// --- gameplay SFX --------------------------------------------------------------------------
 
 export function buildSfx() {
   return {
@@ -76,53 +315,29 @@ export function buildSfx() {
       ),
     ),
     select: seq(tone(784, 0.04, { vol: 0.32 }), tone(1175, 0.07, { vol: 0.32, decay: 12 })),
+    // Impact thud for the Mario-style stomp: a fast pitch drop + a puff of noise.
+    stomp: mix(
+      tone(220, 0.12, { vol: 0.5, wave: "square", fEnd: 70, decay: 16 }),
+      noise(0.07, { vol: 0.3, decay: 40, soft: true }),
+    ),
+    // Spring mushroom "boing": a rising triangle chirp with a little overshoot wobble.
+    spring: seq(
+      tone(240, 0.06, { vol: 0.4, wave: "tri", fEnd: 180 }),
+      tone(200, 0.28, { vol: 0.45, wave: "tri", fEnd: 1050, decay: 4 }),
+    ),
+    // Checkpoint flag: a warm two-note chime + held sparkle.
+    checkpoint: seq(
+      tone(784, 0.09, { vol: 0.4, wave: "tri" }),
+      mix(tone(1047, 0.5, { vol: 0.35, wave: "tri", decay: 4 }), tone(1568, 0.5, { vol: 0.18, decay: 6 })),
+    ),
+    // Crumbling platform: low rumble + falling debris crackle.
+    crumble: mix(
+      tone(140, 0.3, { vol: 0.35, wave: "saw", fEnd: 60, decay: 7 }),
+      noise(0.3, { vol: 0.3, decay: 10, soft: true }),
+    ),
+    // Skid: a tiny scuff of noise (played very quietly by sfx.js).
+    skid: noise(0.12, { vol: 0.4, decay: 22, soft: true }),
   };
-}
-
-// --- Background music (pentatonic → always consonant; soft + low for a gentle loop) -------
-const NOTE = {
-  C3: 130.81, E3: 164.81, G3: 196.0, A3: 220.0,
-  E4: 329.63, G4: 392.0, A4: 440.0,
-  C5: 523.25, D5: 587.33, E5: 659.25,
-};
-
-// Menu: a light music-box waltz over a soft low bass (~13s loop).
-export function buildMenuMusic() {
-  const b = 0.4; // seconds per beat
-  const N = NOTE;
-  const m = (f, beats = 1) => tone(f, b * beats, { vol: 0.5, wave: "sine", decay: 2.6 });
-  const bass = (f, beats) => tone(f, b * beats, { vol: 0.3, wave: "tri", decay: 0.8 });
-  const melody = seq(
-    m(N.G4), m(N.C5), m(N.E5), m(N.D5),
-    m(N.C5), m(N.E5), m(N.G4), m(N.A4),
-    m(N.G4), m(N.A4), m(N.C5), m(N.D5),
-    m(N.E5, 2), m(N.D5, 2),
-    m(N.C5), m(N.A4), m(N.G4), m(N.E4),
-    m(N.G4), m(N.C5), m(N.A4), m(N.G4),
-    m(N.E4), m(N.G4), m(N.A4), m(N.C5),
-    m(N.G4, 2), m(0, 2),
-  );
-  const bassline = seq(
-    bass(N.C3, 4), bass(N.A3, 4), bass(N.G3, 4), bass(N.E3, 4),
-    bass(N.C3, 4), bass(N.G3, 4), bass(N.A3, 4), bass(N.G3, 4),
-  );
-  return normalize(mix(melody, bassline), 0.62);
-}
-
-// Gameplay: a slower, sparser, airier loop that stays out of the way (~26s loop).
-export function buildGameMusic() {
-  const b = 0.8;
-  const N = NOTE;
-  const lead = (f, beats = 2) => tone(f, b * beats, { vol: 0.4, wave: "sine", decay: 1.1 });
-  const pad = (f, beats) => tone(f, b * beats, { vol: 0.2, wave: "tri", decay: 0.5 });
-  const melody = seq(
-    lead(N.C5), lead(N.G4), lead(N.A4), lead(N.E5),
-    lead(N.D5), lead(N.C5), lead(N.G4), lead(N.A4),
-    lead(N.E4), lead(N.G4), lead(N.C5), lead(N.D5),
-    lead(N.E5), lead(N.D5), lead(N.C5, 4),
-  );
-  const padline = seq(pad(N.C3, 8), pad(N.A3, 8), pad(N.E3, 8), pad(N.G3, 8));
-  return normalize(mix(melody, padline), 0.5);
 }
 
 export function encodeWav(samples, sampleRate = SFX_RATE) {

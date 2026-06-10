@@ -26,3 +26,16 @@ export const ANIMATED_SPRITES = [
   "anna", "sognatrice", "avventuriera",
   "skirt", "bodice", "necklace", "crown",
 ];
+
+// World sprites with their own little loops (horizontal strips; cell size = the sprite's
+// old single-frame size, so colliders and placement math are untouched). The generator
+// (tools/gen/world.mjs) emits strips in this exact frame count/order.
+export const WORLD_SHEETS = {
+  apple: { sliceX: 6, anims: { spin: { from: 0, to: 5, speed: 9, loop: true } } },
+  pearl: { sliceX: 6, anims: { spin: { from: 0, to: 5, speed: 9, loop: true } } },
+  lantern: { sliceX: 6, anims: { spin: { from: 0, to: 5, speed: 9, loop: true } } },
+  crystal: { sliceX: 6, anims: { spin: { from: 0, to: 5, speed: 9, loop: true } } },
+  crab: { sliceX: 4, anims: { walk: { from: 0, to: 3, speed: 8, loop: true } } },
+  flyer: { sliceX: 4, anims: { fly: { from: 0, to: 3, speed: 10, loop: true } } },
+  portal: { sliceX: 4, anims: { shimmer: { from: 0, to: 3, speed: 5, loop: true } } },
+};

@@ -36,7 +36,7 @@ export function registerFinaleScene() {
     resetInput();
 
     drawBallroom();
-    playBgm("menu-bgm", 0.34); // the gentle waltz returns under the ballroom
+    playBgm("finale-bgm", 0.34); // the grand waltz under the ballroom
     k.wait(0.2, () => sfx("win")); // warm fanfare as the ballroom settles in
 
     // --- The heroine as "Principessa Perfetta": base body + all four skins layered on ---

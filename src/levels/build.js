@@ -146,13 +146,15 @@ function makeCollectible(cx, cy, theme) {
     k.sprite(theme.collectibleSprite || "apple"),
     k.anchor("center"),
     k.pos(0, 0),
-    k.rotate(0), // enables the gentle sway below
     k.z(3),
   ]);
+  // Coin-style spin (replaces the old rotate-sway), started at a random frame so a row of
+  // pickups doesn't spin in eerie lockstep.
+  sprite.play("spin");
+  sprite.frame = Math.floor(k.rand(0, 6));
   item.onUpdate(() => {
     item.t += k.dt() * 3;
     item.pos.y = item.baseY + Math.sin(item.t) * 5; // a touch more bob than before (spec §4)
-    sprite.angle = Math.sin(item.t * 0.8) * 6; // gentle sway
     halo.opacity = 0.12 + 0.12 * (0.5 + 0.5 * Math.sin(item.t * 1.6)); // gentle flicker
   });
   return item;
@@ -216,6 +218,7 @@ function makeCrab(cx, cy, theme) {
     { baseX: cx, dir: 1 },
   ]);
   const art = crab.add([k.sprite("crab"), k.anchor("center"), k.pos(0, 0)]);
+  art.play("walk");
 
   crab.onUpdate(() => {
     crab.move(crab.dir * ENEMIES.CRAB_SPEED, 0);
@@ -241,7 +244,8 @@ function makeFlyer(cx, cy, theme) {
     "enemy",
     { baseX: cx, baseY: cy, dir: 1, t: k.rand(0, Math.PI * 2) },
   ]);
-  flyer.add([k.sprite("flyer"), k.anchor("center"), k.pos(0, 0)]);
+  const wings = flyer.add([k.sprite("flyer"), k.anchor("center"), k.pos(0, 0)]);
+  wings.play("fly");
 
   flyer.onUpdate(() => {
     flyer.pos.x += flyer.dir * ENEMIES.FLY_SPEED * k.dt();
@@ -293,7 +297,8 @@ function makeGoal(cx, cy, theme) {
   const goalCol = theme.goal || PALETTE.gold;
   // The portal arch sprite (neutral grey, tinted with the goal colour) stands on the ground,
   // behind the existing shimmering beam which stays as the magical glow + the "goal" collider.
-  k.add([k.sprite("portal"), k.pos(cx, cy + 20), k.anchor("bot"), k.color(...goalCol), k.z(1)]);
+  const portal = k.add([k.sprite("portal"), k.pos(cx, cy + 20), k.anchor("bot"), k.color(...goalCol), k.z(1)]);
+  portal.play("shimmer");
   const beam = k.add([
     k.rect(54, H),
     k.pos(cx, cy + 20),

@@ -1,7 +1,7 @@
 // juice.js — small "game feel" helpers (Specifiche_Polishing §3). Pure Kaplay, no DOM,
-// so it never touches the UI overlays. Currently: a confetti burst for pickups. (Squash &
-// stretch lives in the player entity; parallax lives in the game scene, both tightly
-// coupled to those files.)
+// so it never touches the UI overlays: confetti bursts, dust puffs, screen shake and
+// hit-stop. (Squash & stretch lives in the player entity; parallax lives in the game
+// scene, both tightly coupled to those files.)
 
 import { k } from "./kaplayCtx.js";
 
@@ -43,4 +43,59 @@ export function confettiBurst(pos, colors = [[212, 175, 55], [255, 255, 255], [2
       if (p.age >= p.life) k.destroy(p);
     });
   }
+}
+
+/**
+ * A little dust cloud at the heroine's feet: a few grey-cream squares that drift up and
+ * out, then fade. Used on landings and skids (big puff) and as a faint trickle while
+ * running (count 1). Same hand-rolled particle idiom as confettiBurst — deliberately not
+ * the engine's particles() comp, so there is ONE well-understood pattern in the codebase.
+ * @param {{x:number,y:number}} pos  world position (the feet)
+ * @param {{count?:number, dir?:number}} [opts]  dir: bias drift toward -1 left / +1 right
+ */
+export function dustPuff(pos, { count = 5, dir = 0 } = {}) {
+  for (let i = 0; i < count; i++) {
+    const tone = k.rand(0.85, 1);
+    const p = k.add([
+      k.rect(k.rand(3, 6), k.rand(3, 6)),
+      k.pos(pos.x + k.rand(-10, 10), pos.y + k.rand(-4, 2)),
+      k.anchor("center"),
+      k.color(235 * tone, 230 * tone, 218 * tone),
+      k.opacity(0.7),
+      k.z(9), // just behind the heroine (z 10)
+      {
+        vel: k.vec2(k.rand(-30, 30) + dir * k.rand(20, 60), -k.rand(20, 55)),
+        life: k.rand(0.25, 0.45),
+        age: 0,
+      },
+    ]);
+    p.onUpdate(() => {
+      const dt = k.dt();
+      p.age += dt;
+      p.vel.y -= 40 * dt; // dust floats, it doesn't fall
+      p.pos = p.pos.add(p.vel.scale(dt));
+      p.opacity = Math.max(0, 0.7 * (1 - p.age / p.life));
+      if (p.age >= p.life) k.destroy(p);
+    });
+  }
+}
+
+// Hit-stop: freeze the action for a beat (Mario-style impact weight). Implemented via
+// debug.timeScale with a re-entrancy guard so overlapping stomps can't strand the game
+// in slow motion; DOM overlays are outside Kaplay and unaffected.
+let stopping = false;
+export function hitStop(duration = 0.08, scale = 0.15) {
+  if (stopping) return;
+  stopping = true;
+  k.debug.timeScale = scale;
+  // k.wait respects timeScale, so wait for the SCALED duration to restore on real time.
+  k.wait(duration * scale, () => {
+    k.debug.timeScale = 1;
+    stopping = false;
+  });
+}
+
+/** Small screen shake (wraps k.shake so callers don't reach into the engine). */
+export function screenShake(intensity = 3) {
+  k.shake(intensity);
 }

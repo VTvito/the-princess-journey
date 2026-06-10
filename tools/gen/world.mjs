@@ -152,8 +152,42 @@ export function buildTileAtlas() {
 }
 
 // --- collectibles (12×12 native, natural colors + dark contour) ----------------------
+//
+// Each collectible is emitted as a 6-frame coin-spin strip: the painted sprite is
+// horizontally squashed through [1, .8, .45, .2, .45, .8] around its centre, the classic
+// 16-bit "spinning pickup". The squash happens AFTER the outline bake so the contour
+// stays crisp on every frame.
 
 const C = 12;
+const SPIN_WIDTHS = [1, 0.8, 0.45, 0.2, 0.45, 0.8];
+
+// Nearest-neighbour horizontal squash around the image centre.
+function squashX(img, f) {
+  if (f >= 1) return img;
+  const out = newImg(img.w, img.h);
+  const cx = (img.w - 1) / 2;
+  for (let y = 0; y < img.h; y++)
+    for (let x = 0; x < img.w; x++) {
+      const sx = Math.round(cx + (x - cx) / f);
+      if (sx < 0 || sx >= img.w) continue;
+      const si = (y * img.w + sx) * 4;
+      if (img.buf[si + 3] === 0) continue;
+      pset(out, x, y, [img.buf[si], img.buf[si + 1], img.buf[si + 2]], img.buf[si + 3]);
+    }
+  return out;
+}
+
+// Lay n frames out as a horizontal strip of equal cells.
+function strip(frames, cw, ch) {
+  const img = newImg(cw * frames.length, ch);
+  frames.forEach((f, i) => blit(img, f, i * cw, 0));
+  return img;
+}
+
+export const buildSpinStrip = (paint) => {
+  const base = paint();
+  return strip(SPIN_WIDTHS.map((f) => squashX(base, f)), base.w, base.h);
+};
 
 export function paintApple() {
   const img = newImg(C, C);
@@ -205,18 +239,21 @@ export function paintCrystal() {
   return img;
 }
 
-// --- enemies (natural colors + contour) -----------------------------------------------
+// --- enemies (natural colors + contour; 4-frame walk/fly strips) ------------------------
 
-export function paintCrab() {
+function paintCrab(phase = 0) {
   const img = newImg(16, 10);
   const body = [206, 70, 60];
   const claw = [232, 120, 104];
+  const clawBob = [0, -1, 0, 1][phase]; // claws wave as it scuttles
   fillDisc(img, 8, 5, 4.4, body); // shell
   fillRect(img, 4, 4, 12, 8, body);
   fillRect(img, 4, 7, 12, 8, darken(body, 0.78)); // shaded underside
-  fillRect(img, 1, 3, 3, 5, claw); // claws
-  fillRect(img, 13, 3, 15, 5, claw);
-  for (const lx of [4, 6, 9, 11]) pset(img, lx, 8, darken(body, 0.7)); // legs
+  fillRect(img, 1, 3 + clawBob, 3, 5 + clawBob, claw); // claws
+  fillRect(img, 13, 3 - clawBob, 15, 5 - clawBob, claw);
+  // Legs alternate in pairs for the scuttle.
+  const legs = phase % 2 === 0 ? [4, 6, 9, 11] : [5, 7, 10, 12];
+  for (const lx of legs) pset(img, lx, 8, darken(body, 0.7));
   pset(img, 6, 2, [255, 255, 255]); // eyes
   pset(img, 10, 2, [255, 255, 255]);
   pset(img, 6, 3, [20, 20, 20]);
@@ -225,23 +262,27 @@ export function paintCrab() {
   return img;
 }
 
-export function paintFlyer() {
+function paintFlyer(phase = 0) {
   const img = newImg(12, 8);
   const body = [44, 40, 60];
   const wing = [26, 24, 40];
+  const flap = [-1, 0, 1, 0][phase]; // wings beat up → mid → down → mid
   fillDisc(img, 6, 4, 2.4, body);
-  fillRect(img, 0, 2, 4, 4, wing); // spread wings, tips raised
-  fillRect(img, 8, 2, 12, 4, wing);
-  pset(img, 1, 1, wing);
-  pset(img, 10, 1, wing);
+  fillRect(img, 0, 2 + flap, 4, 4 + flap, wing);
+  fillRect(img, 8, 2 + flap, 12, 4 + flap, wing);
+  pset(img, 1, 1 + flap * 2, wing); // wing tips lead the beat
+  pset(img, 10, 1 + flap * 2, wing);
   pset(img, 7, 3, [255, 255, 255]); // eye
   outline(img, [120, 116, 140]); // light contour — the body is already near-black
   return img;
 }
 
-// --- goal portal (24×40 native, neutral grey, tinted theme.goal) ------------------------
+export const buildCrabStrip = () => strip([0, 1, 2, 3].map(paintCrab), 16, 10);
+export const buildFlyerStrip = () => strip([0, 1, 2, 3].map(paintFlyer), 12, 8);
 
-export function paintPortal() {
+// --- goal portal (24×40 native, neutral grey, tinted theme.goal; 4-frame shimmer) ---------
+
+function paintPortal(phase = 0) {
   const img = newImg(24, 40);
   // Pillars with brick seams + a lit inner edge.
   for (const [x0, x1] of [[1, 6], [18, 23]]) {
@@ -252,10 +293,14 @@ export function paintPortal() {
   // Arched crown.
   fillTrap(img, 0, 6, 11.5, 4.5, 11, G.lo);
   fillTrap(img, 0, 2, 11.5, 4.5, 6.5, G.hi);
-  // Inner gateway glow: bright dither fading with depth (tinted, it shimmers in theme.goal).
-  ditherRect(img, 6, 6, 18, 16, G.hi, 255, 0);
-  ditherRect(img, 6, 16, 18, 28, G.base, 255, 1);
-  ditherRect(img, 7, 28, 17, 38, G.lo, 255, 0);
+  // Inner gateway glow: dithered bands flowing downward with the phase (tinted at runtime,
+  // it shimmers in theme.goal). The band seams shift by phase so the light visibly travels.
+  const shift = phase % 2;
+  ditherRect(img, 6, 6, 18, 16 + shift, G.hi, 255, phase);
+  ditherRect(img, 6, 16 + shift, 18, 28 + shift, G.base, 255, phase + 1);
+  ditherRect(img, 7, 28 + shift, 17, 38, G.lo, 255, phase);
   outline(img, G.lo2);
   return img;
 }
+
+export const buildPortalStrip = () => strip([0, 1, 2, 3].map(paintPortal), 24, 40);

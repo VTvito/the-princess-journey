@@ -12,12 +12,12 @@ import { fileURLToPath } from "node:url";
 import { encodeScaled } from "./px.mjs";
 import { HEROINES, SKIN_LAYERS, paintHeroine, paintSkin, paintLogo, buildSheet } from "./characters.mjs";
 import {
-  TILE_FRAMES, buildTileAtlas,
+  TILE_FRAMES, buildTileAtlas, buildSpinStrip,
   paintApple, paintPearl, paintLantern, paintCrystal,
-  paintCrab, paintFlyer, paintPortal,
+  buildCrabStrip, buildFlyerStrip, buildPortalStrip,
 } from "./world.mjs";
 import { BG_THEMES, buildSky, buildMid, buildNear } from "./backgrounds.mjs";
-import { buildSfx, buildMenuMusic, buildGameMusic, encodeWav, normalize } from "./audio.mjs";
+import { buildSfx, SONGS, encodeWav, normalize } from "./audio.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const SPRITES_DIR = join(ROOT, "assets", "sprites");
@@ -40,14 +40,16 @@ writeSprite("logo.png", paintLogo());
 // frame-sync with the body by construction (spec §3).
 for (const { file, kind, color } of SKIN_LAYERS) writeSprite(file, buildSheet((p) => paintSkin(kind, color, p)));
 
-// World sprites: collectibles, enemies, the goal portal.
-writeSprite("apple.png", paintApple());
-writeSprite("pearl.png", paintPearl());
-writeSprite("lantern.png", paintLantern());
-writeSprite("crystal.png", paintCrystal());
-writeSprite("crab.png", paintCrab());
-writeSprite("flyer.png", paintFlyer());
-writeSprite("portal.png", paintPortal());
+// World sprites as animation strips (frame counts in src/animspec.js WORLD_SHEETS):
+// collectibles spin coin-style, the crab scuttles, the flyer beats its wings, the portal
+// glow flows. Cell sizes equal the old single-frame sizes.
+writeSprite("apple.png", buildSpinStrip(paintApple));
+writeSprite("pearl.png", buildSpinStrip(paintPearl));
+writeSprite("lantern.png", buildSpinStrip(paintLantern));
+writeSprite("crystal.png", buildSpinStrip(paintCrystal));
+writeSprite("crab.png", buildCrabStrip());
+writeSprite("flyer.png", buildFlyerStrip());
+writeSprite("portal.png", buildPortalStrip());
 
 // Tile atlas — one strip, frame offsets defined by TILE_FRAMES order (see config.js).
 writeFileSync(join(TILES_DIR, "tileset.png"), encodeScaled(buildTileAtlas()));
@@ -61,10 +63,11 @@ for (const name of Object.keys(BG_THEMES)) {
   console.log("bg     ->", join("assets", "backgrounds", `${name}_{sky,mid,near}.png`));
 }
 
-// Audio: looping music + one-shot SFX (unchanged synth, see audio.mjs).
-writeFileSync(join(AUDIO_DIR, "menu-bgm.wav"), encodeWav(buildMenuMusic()));
-writeFileSync(join(AUDIO_DIR, "game-bgm.wav"), encodeWav(buildGameMusic()));
-console.log("audio  ->", join("assets", "audio", "{menu,game}-bgm.wav"));
+// Audio: six chiptune loops (menu, finale, one per theme) + one-shot SFX (audio.mjs).
+for (const [name, build] of Object.entries(SONGS)) {
+  writeFileSync(join(AUDIO_DIR, `${name}.wav`), encodeWav(build()));
+  console.log("music  ->", join("assets", "audio", `${name}.wav`));
+}
 for (const [name, samples] of Object.entries(buildSfx())) {
   writeFileSync(join(AUDIO_DIR, `${name}.wav`), encodeWav(normalize(samples)));
   console.log("sfx    ->", join("assets", "audio", `${name}.wav`));

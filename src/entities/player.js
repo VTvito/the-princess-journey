@@ -6,6 +6,7 @@ import { k } from "../kaplayCtx.js";
 import { PHYSICS } from "../config.js";
 import { getInput, consumeJump } from "../controls.js";
 import { sfx } from "../sfx.js";
+import { dustPuff } from "../juice.js";
 
 // Heroine sprites are 64×96 (taller than wide, drawn by the pixel-art pipeline in tools/gen/).
 // Rendered 1:1; the collider (see k.area below) is inset so the heroine clears the 64px
@@ -73,22 +74,23 @@ export function makePlayer(char, pos, skinKeys = []) {
   player.squashY = 1;
   let wasGrounded = true;
 
-  // Movement feel state. vx is the horizontal velocity, set INSTANTLY from input (no
-  // acceleration ramp): the heroine starts and stops at once, for tight Mario-style control
-  // on the ground and in the air. The timers give small forgiveness windows (coyote = jump
-  // just after a ledge, buffer = jump pressed just before landing); jumpCut ensures the
-  // variable-height cut is applied at most once per jump.
+  // Movement feel state. vx ramps to the input target over the MICRO window ACCEL_TIME
+  // (~0.06s — imperceptible to the hand, so the tight Mario-style control survives, but it
+  // gives the run animation a lean-in and makes skids detectable; ACCEL_TIME 0 = the old
+  // instant behavior). The timers give small forgiveness windows (coyote = jump just after
+  // a ledge, buffer = jump pressed just before landing); jumpCut ensures the variable-
+  // height cut is applied at most once per jump.
   player.vx = 0;
   let sinceGrounded = 0;
   let sinceJumpPressed = Infinity;
   let jumpCut = true;
+  let runDustT = 0; // trickle timer for the faint dust behind a full-speed run
 
   player.onUpdate(() => {
     const input = getInput();
     const dt = k.dt();
 
-    // Horizontal movement: instant velocity from input (no inertia/slide), so control is
-    // tight and predictable. Direction held -> full speed at once; released -> stop at once.
+    // Horizontal movement: ramp vx toward the input target over ACCEL_TIME (see above).
     let target = 0;
     if (input.left && !input.right) {
       target = -PHYSICS.RUN_SPEED;
@@ -98,8 +100,26 @@ export function makePlayer(char, pos, skinKeys = []) {
       player.facing = 1;
     }
     const groundedNow = player.isGrounded();
-    player.vx = target; // instant
+    // Skid: reversing direction at speed on the ground kicks a dust puff against the run.
+    if (groundedNow && target !== 0 && Math.sign(target) !== Math.sign(player.vx) && Math.abs(player.vx) > PHYSICS.SKID_MIN) {
+      dustPuff(k.vec2(player.pos.x, player.pos.y + 44), { count: 4, dir: Math.sign(player.vx) });
+      sfx("skid");
+    }
+    if (PHYSICS.ACCEL_TIME <= 0) {
+      player.vx = target; // instant (the original feel)
+    } else {
+      const maxStep = (PHYSICS.RUN_SPEED / PHYSICS.ACCEL_TIME) * dt;
+      const delta = target - player.vx;
+      player.vx += Math.abs(delta) <= maxStep ? delta : Math.sign(delta) * maxStep;
+    }
     player.move(player.vx, 0); // framerate-independent (px/s)
+
+    // A faint dust trickle behind a full-speed run (pure decoration, very sparse).
+    runDustT -= dt;
+    if (groundedNow && Math.abs(player.vx) > PHYSICS.RUN_SPEED * 0.9 && runDustT <= 0) {
+      dustPuff(k.vec2(player.pos.x - player.facing * 16, player.pos.y + 44), { count: 1 });
+      runDustT = 0.22;
+    }
 
     // Face travel direction (sprites authored facing right).
     player.flipX = player.facing === -1;
@@ -129,11 +149,12 @@ export function makePlayer(char, pos, skinKeys = []) {
       player.vel.y += (PHYSICS.FALL_MULT - 1) * PHYSICS.GRAVITY * dt;
     }
 
-    // Landing impact: airborne -> grounded this frame.
+    // Landing impact: airborne -> grounded this frame. Squash + a dust puff at the feet.
     const grounded = groundedNow;
     if (grounded && !wasGrounded) {
       player.squashX = 1.1; // squash wide on land
       player.squashY = 0.82;
+      dustPuff(k.vec2(player.pos.x, player.pos.y + 44));
     }
     wasGrounded = grounded;
 

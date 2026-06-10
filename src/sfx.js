@@ -16,6 +16,11 @@ const VOL = {
   goal: 0.6,
   win: 0.75,
   select: 0.4,
+  stomp: 0.5,
+  spring: 0.45,
+  checkpoint: 0.5,
+  crumble: 0.4,
+  skid: 0.18, // very quiet — it fires on every hard reversal
 };
 
 /**

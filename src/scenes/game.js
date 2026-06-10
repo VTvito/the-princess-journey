@@ -11,6 +11,7 @@ import {
   PALETTE,
   CHARACTERS,
   PHYSICS,
+  CAMERA,
   SCORE,
   POWERUP,
   MAX_LEVEL,
@@ -32,7 +33,7 @@ import { buildLevel } from "../levels/build.js";
 import { showInsertCoin, hideInsertCoin } from "../ui/insertCoin.js";
 import { hideReceipt } from "../ui/receipt.js";
 import { fadeToScene } from "../ui/transition.js";
-import { confettiBurst } from "../juice.js";
+import { confettiBurst, dustPuff, hitStop, screenShake } from "../juice.js";
 import { sfx } from "../sfx.js";
 import { playBgm } from "../audio.js";
 
@@ -76,7 +77,7 @@ export function registerGameScene() {
     // clicking it to respawn moves focus off the canvas — without this, keys silently stop
     // working after a restart ("the heroine won't start"). See src/ui/insertCoin.js too.
     focusCanvas();
-    playBgm("game-bgm", 0.32); // gameplay music (idempotent: a level restart won't restart it)
+    playBgm(`bgm-${theme.decor}`, 0.32); // the theme's own track (idempotent on restart)
 
     drawBackground(theme);
 
@@ -87,14 +88,17 @@ export function registerGameScene() {
     const player = makePlayer(char, spawn, unlockedSkinKeys(level));
     player.use(k.z(10));
 
-    // --- Camera follows horizontally, clamped to the level bounds ---
+    // --- Camera: leads the heroine in her facing direction (Mario-style lookahead) and
+    // eases toward the target, clamped to the level bounds ---
     const halfW = GAME_W / 2;
     const maxCamX = Math.max(halfW, worldW - halfW);
+    let camX = Math.min(Math.max(player.pos.x, halfW), maxCamX); // start centred on spawn
     k.onUpdate(() => {
-      const cx = Math.min(Math.max(player.pos.x, halfW), maxCamX);
+      const targetX = Math.min(Math.max(player.pos.x + player.facing * CAMERA.LOOKAHEAD, halfW), maxCamX);
+      camX += (targetX - camX) * (1 - Math.exp(-k.dt() * CAMERA.EASE));
       // Round to whole pixels: with crisp/nearest-neighbour sampling, a fractional camera
       // makes tiles/sprites shimmer ("scattoso") as they cross sample boundaries.
-      setCam(k.vec2(Math.round(cx), GAME_H / 2));
+      setCam(k.vec2(Math.round(camX), GAME_H / 2));
     });
 
     // --- Failure flow (spec §1: no silent respawn — every failure accrues a debt) ---
@@ -137,9 +141,15 @@ export function registerGameScene() {
       const stomping = player.vel.y > 60 && player.pos.y < enemy.pos.y;
       if (isInvincible() || stomping) {
         confettiBurst(enemy.pos, [theme.collectible, PALETTE.cream, PALETTE.gold]);
-        sfx("jump"); // springy bounce / plough-through
+        sfx("stomp"); // satisfying squash thud
         k.destroy(enemy);
-        if (stomping) player.vel.y = -PHYSICS.STOMP_BOUNCE; // bounce back up off a stomp
+        if (stomping) {
+          player.vel.y = -PHYSICS.STOMP_BOUNCE; // bounce back up off a stomp
+          // Impact weight: a tiny freeze + shake + dust make the stomp land (spec §3).
+          hitStop();
+          screenShake(3);
+          dustPuff(enemy.pos);
+        }
         bumpScore(SCORE.STOMP);
       } else {
         die();
