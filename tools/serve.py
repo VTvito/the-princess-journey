@@ -27,6 +27,7 @@ class Handler(SimpleHTTPRequestHandler):
         ".mjs": "text/javascript",
         ".css": "text/css",
         ".json": "application/json",
+        ".webmanifest": "application/manifest+json",
         ".wasm": "application/wasm",
         ".svg": "image/svg+xml",
     }

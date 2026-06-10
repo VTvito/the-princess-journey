@@ -10,7 +10,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { encodeScaled } from "./px.mjs";
-import { HEROINES, SKIN_LAYERS, paintHeroine, paintSkin, paintLogo, buildSheet } from "./characters.mjs";
+import {
+  HEROINES, SKIN_LAYERS, paintHeroine, paintSkin, paintLogo, paintAppIcon, buildSheet,
+} from "./characters.mjs";
 import {
   TILE_FRAMES, buildTileAtlas, buildSpinStrip,
   paintApple, paintPearl, paintLantern, paintCrystal,
@@ -25,8 +27,9 @@ const SPRITES_DIR = join(ROOT, "assets", "sprites");
 const AUDIO_DIR = join(ROOT, "assets", "audio");
 const TILES_DIR = join(ROOT, "assets", "tilesets");
 const BG_DIR = join(ROOT, "assets", "backgrounds");
+const ICONS_DIR = join(ROOT, "assets", "icons");
 
-for (const d of [SPRITES_DIR, AUDIO_DIR, TILES_DIR, BG_DIR]) mkdirSync(d, { recursive: true });
+for (const d of [SPRITES_DIR, AUDIO_DIR, TILES_DIR, BG_DIR, ICONS_DIR]) mkdirSync(d, { recursive: true });
 
 const writeSprite = (file, img) => {
   writeFileSync(join(SPRITES_DIR, file), encodeScaled(img));
@@ -66,6 +69,19 @@ for (const name of Object.keys(BG_THEMES)) {
   writeFileSync(join(BG_DIR, `${name}_mid.png`), encodeScaled(buildMid(name)));
   writeFileSync(join(BG_DIR, `${name}_near.png`), encodeScaled(buildNear(name)));
   console.log("bg     ->", join("assets", "backgrounds", `${name}_{sky,mid,near}.png`));
+}
+
+// PWA / home-screen icons (manifest.webmanifest + index.html): crown emblem on the
+// gift's blue. Authored at quarter-res like everything else, scaled to exact sizes.
+const ICONS = [
+  ["apple-touch-icon.png", paintAppIcon(45), 4], // 180×180 — iOS reads only this one
+  ["icon-192.png", paintAppIcon(48), 4],
+  ["icon-512.png", paintAppIcon(64), 8],
+  ["icon-512-maskable.png", paintAppIcon(64, 0.72), 8], // safe-zone emblem for Android
+];
+for (const [file, img, scale] of ICONS) {
+  writeFileSync(join(ICONS_DIR, file), encodeScaled(img, scale));
+  console.log("icon   ->", join("assets", "icons", file));
 }
 
 // Audio: six chiptune loops (menu, finale, one per theme) + one-shot SFX (audio.mjs).

@@ -221,6 +221,36 @@ export function paintLogo() {
   return img;
 }
 
+// App icon (PWA / apple-touch-icon): the gold crown emblem on the gift's sugar-paper
+// blue, fully opaque (iOS composites black behind transparent icons). `emblem` shrinks
+// the crown for the maskable variant (Android may crop up to ~20% on every side).
+export function paintAppIcon(S, emblem = 1) {
+  const img = newImg(S, S);
+  fillRect(img, 0, 0, S, S, [167, 199, 231]); // sugar-paper blue
+  fillRect(img, 0, Math.round(S * 0.8), S, S, [199, 186, 232]); // lilac ground band
+
+  // Crown drawn on its own transparent layer so outline() can trace it, then blitted.
+  const crown = newImg(S, S);
+  const gold = [212, 175, 55];
+  const goldDark = [168, 134, 36];
+  const gem = [235, 220, 150];
+  const cx = S / 2;
+  const half = S * 0.3 * emblem;
+  const bTop = Math.round(cx + S * 0.02);
+  const bBot = Math.round(bTop + S * 0.14 * emblem);
+  fillRect(crown, cx - half, bTop, cx + half, bBot, gold);
+  fillRect(crown, cx - half, bBot - Math.max(1, Math.round(S * 0.04)), cx + half, bBot, goldDark);
+  const pointTop = bTop - S * 0.2 * emblem;
+  for (const fx of [-0.72, 0, 0.72]) {
+    fillTrap(crown, pointTop, bTop, cx + fx * half, Math.max(0.5, S * 0.015), S * 0.06 * emblem, gold);
+    fillRect(crown, cx + fx * half - S * 0.02, pointTop - S * 0.04, cx + fx * half + S * 0.02, pointTop, gem);
+  }
+  fillRect(crown, cx - S * 0.025, (bTop + bBot) / 2 - S * 0.025, cx + S * 0.025, (bTop + bBot) / 2 + S * 0.025, gem);
+  outline(crown, OUT);
+  blit(img, crown, 0, 0);
+  return img;
+}
+
 // Per-character looks (mirrors CHARACTERS in src/config.js — Anna keeps the brown wavy
 // hair + sky-blue puffer; the others keep their signature palettes and hair lengths).
 export const HEROINES = [

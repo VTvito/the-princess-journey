@@ -9,8 +9,15 @@
     />
     <meta name="theme-color" content="#26325c" />
     <title>The Princess Journey</title>
-    <!-- Inline empty icon to avoid a 404 favicon request. -->
-    <link rel="icon" href="data:," />
+    <!-- PWA: installable to the home screen (manifest for Android/desktop; iOS Safari
+         ignores manifest icons, so the 180×180 apple-touch-icon link is required). -->
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./assets/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Principessa" />
+    <link rel="icon" type="image/png" href="./assets/icons/icon-192.png" />
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>

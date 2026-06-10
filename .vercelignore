@@ -1,0 +1,10 @@
+# Deploy only what the browser needs: index.html, style.css, manifest, src/, assets/,
+# vendor/. Everything below is dev-time tooling or repo noise.
+node_modules
+tools
+.claude
+*.md
+package.json
+package-lock.json
+.gitattributes
+pjrealplatformerfeel.bundle
