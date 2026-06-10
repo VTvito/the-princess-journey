@@ -160,15 +160,24 @@ export const ASSETS = {
   },
 
   // Tile atlas (spec §2) — one 64px strip tinted per theme at runtime. Frames map names to
-  // sub-rects so src/levels/build.js can do k.sprite("ground_top") etc.
+  // sub-rects so src/levels/build.js can do k.sprite("ground_top") etc. Offsets follow the
+  // TILE_FRAMES order in tools/gen/world.mjs: _2 are look-alike variants (so long runs don't
+  // visibly repeat), _l/_r are carved edge caps, grass_cap* are the transparent surface
+  // overlays tinted theme.solidTop (they replace the old flat lip rect).
   tiles: {
     atlas: "assets/tilesets/tileset.png",
     frames: {
       ground_top: { x: 0, y: 0, width: 64, height: 64 },
-      ground_fill: { x: 64, y: 0, width: 64, height: 64 },
-      platform: { x: 128, y: 0, width: 64, height: 64 },
-      hazard_spike: { x: 192, y: 0, width: 64, height: 64 },
-      hazard_icicle: { x: 256, y: 0, width: 64, height: 64 },
+      ground_top_2: { x: 64, y: 0, width: 64, height: 64 },
+      ground_top_l: { x: 128, y: 0, width: 64, height: 64 },
+      ground_top_r: { x: 192, y: 0, width: 64, height: 64 },
+      ground_fill: { x: 256, y: 0, width: 64, height: 64 },
+      ground_fill_2: { x: 320, y: 0, width: 64, height: 64 },
+      platform: { x: 384, y: 0, width: 64, height: 64 },
+      hazard_spike: { x: 448, y: 0, width: 64, height: 64 },
+      hazard_icicle: { x: 512, y: 0, width: 64, height: 64 },
+      grass_cap: { x: 576, y: 0, width: 64, height: 64 },
+      grass_cap_2: { x: 640, y: 0, width: 64, height: 64 },
     },
   },
 

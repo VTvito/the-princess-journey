@@ -35,12 +35,20 @@ export function buildLevel(def) {
       switch (ch) {
         case "=": {
           // Solid tile. Pick a neighbour-aware frame so surfaces read as grassy tops, buried
-          // dirt fill, or floating slabs — then tint the whole sprite with theme.solid (the
-          // atlas frames are neutral grey with baked bevel/texture, so the tint keeps
-          // contrast). Collider (area + static body) is identical to the old rect.
+          // dirt fill, carved terrace edges, or floating slabs — then tint the whole sprite
+          // with theme.solid (the atlas frames are neutral grey with baked shading, so the
+          // tint keeps contrast). Variants are chosen by a deterministic position hash so
+          // long runs don't visibly repeat. Collider (area + static body) is unchanged.
           const airAbove = (rows[r - 1]?.[c] ?? " ") !== "=";
           const airBelow = (rows[r + 1]?.[c] ?? " ") !== "=";
-          const frame = airAbove && airBelow ? "platform" : airAbove ? "ground_top" : "ground_fill";
+          const airLeft = (row[c - 1] ?? " ") !== "=";
+          const airRight = (row[c + 1] ?? " ") !== "=";
+          let frame;
+          if (airAbove && airBelow) frame = "platform";
+          else if (airAbove && airLeft && !airRight) frame = "ground_top_l";
+          else if (airAbove && airRight && !airLeft) frame = "ground_top_r";
+          else if (airAbove) frame = (c * 7 + r) % 3 === 0 ? "ground_top_2" : "ground_top";
+          else frame = (c * 5 + r * 3) % 4 === 0 ? "ground_fill_2" : "ground_fill";
           k.add([
             k.sprite(frame),
             k.pos(x, y),
@@ -49,9 +57,10 @@ export function buildLevel(def) {
             k.color(...theme.solid),
             "solid",
           ]);
-          // Bright grass/snow lip on exposed top surfaces (keeps the faithful two-tone look).
+          // Bright grass/snow cap on exposed top surfaces: a transparent pixel overlay with
+          // blades, tinted theme.solidTop (keeps the faithful two-tone surface look).
           if (airAbove) {
-            k.add([k.rect(TILE, 7), k.pos(x, y), k.color(...theme.solidTop), k.z(1)]);
+            k.add([k.sprite(c % 2 ? "grass_cap_2" : "grass_cap"), k.pos(x, y), k.color(...theme.solidTop), k.z(1)]);
           }
           break;
         }

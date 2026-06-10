@@ -7,7 +7,7 @@ import { PHYSICS } from "../config.js";
 import { getInput, consumeJump } from "../controls.js";
 import { sfx } from "../sfx.js";
 
-// Heroine sprites are 64×96 (taller than wide, drawn by tools/gen-placeholders.mjs).
+// Heroine sprites are 64×96 (taller than wide, drawn by the pixel-art pipeline in tools/gen/).
 // Rendered 1:1; the collider (see k.area below) is inset so the heroine clears the 64px
 // level grid — the oversized 2× collider used to wall her in on every level.
 const PLAYER_SCALE = 1;
