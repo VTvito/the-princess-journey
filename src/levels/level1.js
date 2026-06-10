@@ -1,23 +1,15 @@
-// level1.js — "Foresta Incantata" (spec §4, Livello 1).
+// level1.js — "Foresta Incantata" (spec §4, Livello 1 — the tutorial).
 // Pure DATA: a tile map + a colour theme. The generic builder in build.js turns this
-// into game objects, so adding levels 2–4 later means adding sibling files like this one
-// — no new rendering/collision code.
+// into game objects. Legend: see build.js.
 //
-// Tile legend (one char per 64px cell):
-//   "="  solid platform / ground (static collider)
-//   "^"  rovi spinosi (thorns) — hazard; touching it respawns the player
-//   "o"  Mela d'oro (golden apple) — collectible
-//   "@"  player spawn point
-//   ">"  level goal (end-of-level marker)
-//   " "  empty air  (a "burrone"/ravine is just a gap in the ground rows)
-//
-// The map is ≈120 cells wide (≈6 screens) and 11 tall. The heroine's running lane (row 8)
-// stays clear of overhead solids; the only floor is the bottom two rows, broken by jumpable
-// 2-cell ravines. Collectibles float at rows 6–7 and are grabbed mid-jump; a few floating
-// platforms hold bonus pickups above the lane (optional verticality — never on the critical
-// left→right path). Hazards sit one-per-segment, well clear of ravine edges so a hazard-hop
-// never overshoots into a gap (tuned for the snappy arc in config.PHYSICS). The map is built
-// declaratively via mapkit.composeMap so the long layout stays correct-by-construction.
+// Arc (intro → develop → twist → climax):
+//   • intro (x0–25): flat run, first thorn, first ravine — the basics;
+//   • develop (x26–50): the SPRING is introduced under a visible bonus perch, then a
+//     bridged ravine and the star; a checkpoint banks the progress;
+//   • twist (x51–63): a spring launches the heroine onto a one-way high route that
+//     carries her over a double ravine (the critical path itself goes airborne);
+//   • climax (x86–119): a terraced climb (1 then 2 cells) to a goal with a view.
+// Checkpoints at x49 and x88 keep retries kind — deaths still cost 500 Coccoline.
 
 import { composeMap, arcCollectibles, LANE } from "./mapkit.js";
 
@@ -50,36 +42,55 @@ export const LEVEL_1 = {
 
   map: composeMap({
     width: 120,
-    ravines: [{ x: 22, w: 2 }, { x: 46, w: 2 }, { x: 70, w: 2 }, { x: 94, w: 2 }],
-    // Floating platforms that bridge three of the ravines at row 8 / LANE (top ≈ y512). They
-    // sit one tile above the (missing) ground, where the lane has no floor — so they don't
-    // block the heroine's head while running (she's ~92px tall). The ravine hop lands ON the
-    // bridge with a generous margin (jump apex ≈ y428, well above the y512 top), then a bonus
-    // apple waits just above. A raised, robust stepping-bridge — friendly for both human + bot.
-    platforms: [
-      { x: 46, y: LANE, w: 2 },
-      { x: 70, y: LANE, w: 2 },
-      { x: 94, y: LANE, w: 2 },
+    ravines: [
+      { x: 22, w: 2 }, // intro: one clean, jumpable gap
+      { x: 46, w: 2 }, // develop: bridged at the lane (landing practice)
+      { x: 58, w: 2 }, // twist: double gap crossed on the high route
+      { x: 62, w: 2 },
     ],
+    // Climax: the ground itself rises — a one-cell step, then a two-cell summit.
+    terraces: [
+      { x: 94, w: 8, h: 1 },
+      { x: 102, w: 18, h: 2 },
+    ],
+    platforms: [
+      { x: 46, y: LANE, w: 2 }, // stepping-bridge over the develop ravine
+      { x: 27, y: 4, w: 3 }, // bonus perch above the first spring
+    ],
+    // One-way high route: launched onto by the spring at x52, carries over both twist
+    // ravines, drops back to the lane safely past them (landing ≈ x64, solid ground).
+    semisolids: [{ x: 52, y: 4, w: 10 }],
     items: [
       { x: 2, y: LANE, ch: "@" }, // spawn
-      { x: 116, y: LANE, ch: ">" }, // goal
-      // Thorns: one per ground segment, well clear of the ravine edges.
+      { x: 117, y: 6, ch: ">" }, // goal on the summit terrace (walk row 6)
+      // Springs: the bonus one (perch above), then the critical-path launcher.
+      { x: 29, y: LANE, ch: "M" },
+      { x: 52, y: LANE, ch: "M" },
+      // Checkpoints: before the twist, before the climb.
+      { x: 49, y: LANE, ch: "F" },
+      { x: 88, y: LANE, ch: "F" },
+      // Thorns: one per stretch, clear of ravine edges and spring landings.
       { x: 12, y: LANE, ch: "^" },
-      { x: 34, y: LANE, ch: "^" },
-      { x: 58, y: LANE, ch: "^" },
+      { x: 36, y: LANE, ch: "^" },
+      { x: 76, y: LANE, ch: "^" },
       { x: 82, y: LANE, ch: "^" },
-      { x: 106, y: LANE, ch: "^" },
-      // Star power-up on the lane (grabbed while running): a taste of invincibility.
+      { x: 98, y: 7, ch: "^" }, // on the first terrace's surface
+      // Star power-up on the lane: a taste of invincibility before the twist.
       { x: 40, y: LANE, ch: "*" },
-      // Apples along the run + over the ravines (grabbed mid-jump). Rows 6–7 are above the
-      // row-8 bridges, so nothing overwrites a platform cell.
-      ...arcCollectibles([8, 16, 22, 30, 40, 46, 54, 62, 70, 78, 88, 94, 102, 110]),
-      // Bonus apples just above the ravine bridges (row 5 ≈ y352): an easy grab once you've
-      // hopped up onto the bridge — an optional reward, off the critical ground path.
-      { x: 46, y: 5, ch: "o" },
-      { x: 70, y: 5, ch: "o" },
-      { x: 94, y: 5, ch: "o" },
+      // Apples along the run (rows 6–7, grabbed mid-jump).
+      ...arcCollectibles([8, 16, 23, 32, 44, 68, 72, 80, 86]),
+      // Bonus apples: the spring perch, the high route, and the climb.
+      { x: 27, y: 3, ch: "o" },
+      { x: 28, y: 3, ch: "o" },
+      { x: 29, y: 3, ch: "o" },
+      { x: 55, y: 3, ch: "o" },
+      { x: 57, y: 3, ch: "o" },
+      { x: 59, y: 3, ch: "o" },
+      { x: 97, y: 6, ch: "o" },
+      { x: 100, y: 6, ch: "o" },
+      { x: 106, y: 5, ch: "o" },
+      { x: 110, y: 5, ch: "o" },
+      { x: 114, y: 5, ch: "o" },
     ],
   }),
 };

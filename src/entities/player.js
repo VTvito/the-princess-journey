@@ -31,10 +31,12 @@ export function addSkinLayers(parent, keys = []) {
  * @param {{sprite:string}} char  the chosen character (from CHARACTERS)
  * @param {import("../../vendor/kaplay-3001.0.19.mjs").Vec2} pos spawn position
  * @param {string[]} skinKeys  sprite keys to layer on top of the base body (spec §3),
- *   in paint order (e.g. ["skirt"] on level 2). Each is a 64×64 transparent overlay.
+ *   in paint order (e.g. ["skirt"] on level 2). Each is a 64×96 transparent overlay.
+ * @param {{accelTime?:number}} [feel]  per-level feel overrides (e.g. an icy level passes
+ *   a longer accelTime so the heroine slides into and out of her run)
  * @returns the player game object
  */
-export function makePlayer(char, pos, skinKeys = []) {
+export function makePlayer(char, pos, skinKeys = [], feel = {}) {
   const player = k.add([
     k.sprite(char.sprite),
     k.pos(pos),
@@ -105,10 +107,11 @@ export function makePlayer(char, pos, skinKeys = []) {
       dustPuff(k.vec2(player.pos.x, player.pos.y + 44), { count: 4, dir: Math.sign(player.vx) });
       sfx("skid");
     }
-    if (PHYSICS.ACCEL_TIME <= 0) {
+    const accelTime = feel.accelTime ?? PHYSICS.ACCEL_TIME;
+    if (accelTime <= 0) {
       player.vx = target; // instant (the original feel)
     } else {
-      const maxStep = (PHYSICS.RUN_SPEED / PHYSICS.ACCEL_TIME) * dt;
+      const maxStep = (PHYSICS.RUN_SPEED / accelTime) * dt;
       const delta = target - player.vx;
       player.vx += Math.abs(delta) <= maxStep ? delta : Math.sign(delta) * maxStep;
     }

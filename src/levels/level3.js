@@ -1,9 +1,12 @@
 // level3.js — "Tetti d'Oriente" (spec §4, Livello 3).
 // Pure DATA: a tile map + a colour theme; the generic builder (build.js) renders it.
-// New tile this level: "f" = a flying obstacle (ostacolo volante) that patrols the air.
+// Level identity: TERRACED rooftops to climb, lantern-ghost SWOOPERS that dive at her,
+// and a climactic CRUMBLING ridge run. Legend: see build.js.
 //
-// Tile legend:  "=" roof tile   "^" broken-tile spikes (hazard)   "o" lampada (collectible)
-//               "f" ostacolo volante (flyer enemy)   "@" spawn   ">" goal   " " air/ravine
+// Arc: intro (flat street, one crow overhead) → develop (up and over two roof terraces)
+// → twist (swoopers guard the alley between gaps) → climax (a 3-step staircase onto a
+// long crumbling ridge — keep running, it falls behind you; falling out is survivable,
+// the street below is safe).
 
 import { composeMap, arcCollectibles, LANE, AIR } from "./mapkit.js";
 
@@ -37,36 +40,49 @@ export const LEVEL_3 = {
     goal: [255, 210, 120], // warm lantern-light beam
   },
 
-  // ≈120 cells wide. Rooftop floor with jumpable ravines and broken-tile spikes (^). Flyers
-  // (f) patrol the open mid-air (row AIR) over FLAT stretches — never above a ravine or spike,
-  // so the bot runs underneath without being forced to jump into one. Lanterns float along.
   map: composeMap({
     width: 120,
-    ravines: [{ x: 22, w: 2 }, { x: 46, w: 2 }, { x: 70, w: 2 }, { x: 94, w: 2 }],
-    // Floating bridges over three ravines (row 8 / LANE) so the bonus lanterns above are
-    // reachable (see level1.js for the geometry); clear of the flyers' flat patrol stretches.
-    platforms: [
-      { x: 46, y: LANE, w: 2 },
-      { x: 70, y: LANE, w: 2 },
-      { x: 94, y: LANE, w: 2 },
+    ravines: [
+      { x: 34, w: 2 }, // between the two roof terraces
+      { x: 62, w: 2 }, // in the swooper alley
+    ],
+    // Develop: two roofs to climb (1 then 2 cells). Climax: a 3-step staircase up to the
+    // high ridge that the crumbling run continues from.
+    terraces: [
+      { x: 22, w: 8, h: 1 },
+      { x: 38, w: 6, h: 2 },
+      { x: 80, w: 4, h: 1 },
+      { x: 84, w: 4, h: 2 },
+      { x: 88, w: 6, h: 3 },
     ],
     items: [
       { x: 2, y: LANE, ch: "@" },
       { x: 116, y: LANE, ch: ">" },
-      // Lane spikes, well clear of ravine edges.
+      // The crumbling ridge: flush with the high terrace's surface — keep running.
+      ...Array.from({ length: 12 }, (_, i) => ({ x: 94 + i, y: 6, ch: "!" })),
+      // A classic crow over the flat intro street.
+      { x: 18, y: AIR, ch: "f" },
+      // Lantern-ghosts guarding the twist alley (they dive when she comes close).
+      { x: 54, y: 5, ch: "g" },
+      { x: 68, y: 5, ch: "g" },
+      // Checkpoints: before the alley, before the staircase.
+      { x: 46, y: LANE, ch: "F" },
+      { x: 78, y: LANE, ch: "F" },
+      // Broken-tile spikes: street, both roofs, and the post-ridge landing zone.
       { x: 12, y: LANE, ch: "^" },
+      { x: 26, y: 7, ch: "^" }, // on the first roof's surface
+      { x: 41, y: 6, ch: "^" }, // on the second roof's surface
       { x: 58, y: LANE, ch: "^" },
-      { x: 106, y: LANE, ch: "^" },
-      // Flyers over flat ground (no spike/ravine beneath) so running under them is safe.
-      { x: 34, y: AIR, ch: "f" },
-      { x: 82, y: AIR, ch: "f" },
-      // Star power-up before the first flyer.
-      { x: 28, y: LANE, ch: "*" },
-      ...arcCollectibles([8, 16, 24, 30, 40, 48, 54, 64, 72, 78, 88, 96, 102, 112]),
-      // Bonus lanterns above the ravine bridges (row 5).
-      { x: 46, y: 5, ch: "o" },
-      { x: 70, y: 5, ch: "o" },
-      { x: 94, y: 5, ch: "o" },
+      { x: 112, y: LANE, ch: "^" },
+      // Star power-up right after the first checkpoint — brave the alley invincible.
+      { x: 49, y: LANE, ch: "*" },
+      ...arcCollectibles([6, 14, 20, 31, 42, 52, 66, 74, 86, 107, 114]),
+      // Bonus lanterns: the high ridge route pays out for keeping your nerve.
+      { x: 90, y: 4, ch: "o" },
+      { x: 92, y: 4, ch: "o" },
+      { x: 96, y: 5, ch: "o" },
+      { x: 100, y: 5, ch: "o" },
+      { x: 104, y: 5, ch: "o" },
     ],
   }),
 };

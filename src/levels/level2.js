@@ -1,9 +1,11 @@
 // level2.js — "Abissi di Corallo" (spec §4, Livello 2).
-// Same data-driven shape as level1.js; the generic builder (build.js) renders it.
-// New tile this level: "c" = a crab enemy that patrols horizontally.
+// Pure DATA: a tile map + a colour theme; the generic builder (build.js) renders it.
+// Level identity: MOVING jellyfish platforms over wide gaps + an UPDRAFT shaft, with
+// patrolling crabs between them. Legend: see build.js.
 //
-// Tile legend:  "=" coral rock   "^" riccio di mare (urchin, hazard)   "o" perla
-//               "c" granchio (crab enemy)   "@" spawn   ">" goal   " " water/ravine
+// Arc: intro (basics + a spring-served bonus reef) → develop (the first moving platform
+// — wait for it, ride it) → twist (a second, faster mover + crab pressure) → climax
+// (a current of rising water carries her up and over the last chasm).
 
 import { composeMap, arcCollectibles, LANE } from "./mapkit.js";
 
@@ -35,35 +37,53 @@ export const LEVEL_2 = {
     goal: [120, 220, 230], // aqua light beam
   },
 
-  // ≈120 cells wide. Coral floor broken by jumpable ravines; urchins (^) on the lane and
-  // patrolling crabs (c) between them, each well clear of the ravine edges. Pearls float along
-  // the arc with a few higher ones for an optional bigger hop. Built via mapkit.composeMap.
+  // Jellyfish platforms gliding over the two wide chasms. Ranges are tuned so the right
+  // extreme lands flush on the far edge (ride on, walk off — no leap of faith).
+  movers: [
+    { x: 39, y: LANE, w: 2, dx: 2, period: 4 },
+    { x: 71, y: LANE, w: 2, dx: 2, period: 3.6, phase: 2 },
+  ],
+
   map: composeMap({
     width: 120,
-    ravines: [{ x: 22, w: 2 }, { x: 46, w: 2 }, { x: 70, w: 2 }, { x: 94, w: 2 }],
-    // Floating bridges over three ravines (row 8 / LANE) so the bonus pearls above are
-    // reachable; a robust hop, off the running head's path (see level1.js for the geometry).
-    platforms: [
-      { x: 46, y: LANE, w: 2 },
-      { x: 70, y: LANE, w: 2 },
-      { x: 94, y: LANE, w: 2 },
+    ravines: [
+      { x: 20, w: 2 }, // intro: a plain jumpable gap
+      { x: 40, w: 3 }, // develop: too wide to jump — ride the jellyfish
+      { x: 72, w: 3 }, // twist: the second, off-phase jellyfish
+      { x: 88, w: 3 }, // climax: the updraft shaft (the current carries her over)
     ],
+    // Spring-served bonus reef: launch at x26, pearls on a one-way ledge above.
+    semisolids: [{ x: 24, y: 5, w: 5 }],
     items: [
       { x: 2, y: LANE, ch: "@" },
       { x: 116, y: LANE, ch: ">" },
-      // Urchins (static spikes) + crabs (patrolling), spaced clear of ravines and each other.
-      { x: 12, y: LANE, ch: "^" },
-      { x: 34, y: LANE, ch: "c" },
-      { x: 58, y: LANE, ch: "^" },
-      { x: 82, y: LANE, ch: "c" },
-      { x: 106, y: LANE, ch: "^" },
-      // Star power-up before the first crab — plough straight through the patrol.
-      { x: 28, y: LANE, ch: "*" },
-      ...arcCollectibles([8, 16, 24, 30, 40, 48, 54, 64, 72, 78, 88, 96, 102, 112]),
-      // Bonus pearls above the ravine bridges (row 5), grabbed with a hop up.
-      { x: 46, y: 5, ch: "o" },
-      { x: 70, y: 5, ch: "o" },
-      { x: 94, y: 5, ch: "o" },
+      // The updraft: a column of rising water filling the climax shaft.
+      ...[88, 89, 90].flatMap((x) => [5, 6, 7, 8, 9].map((y) => ({ x, y, ch: "w" }))),
+      { x: 26, y: LANE, ch: "M" }, // spring up to the bonus reef
+      // Checkpoints: after the first ride, before the shaft.
+      { x: 46, y: LANE, ch: "F" },
+      { x: 84, y: LANE, ch: "F" },
+      // Urchins on the lane, clear of gap edges and crab patrols.
+      { x: 14, y: LANE, ch: "^" },
+      { x: 34, y: LANE, ch: "^" },
+      { x: 60, y: LANE, ch: "^" },
+      { x: 104, y: LANE, ch: "^" },
+      // Crabs patrolling the stretches between set-pieces.
+      { x: 30, y: LANE, ch: "c" },
+      { x: 52, y: LANE, ch: "c" },
+      { x: 76, y: LANE, ch: "c" },
+      { x: 100, y: LANE, ch: "c" },
+      // Star power-up mid-level — plough through the twist's crab pressure.
+      { x: 64, y: LANE, ch: "*" },
+      ...arcCollectibles([8, 16, 21, 32, 44, 50, 58, 66, 78, 86, 96, 102, 110]),
+      // Bonus pearls: the spring reef, over each jellyfish ride, inside the updraft.
+      { x: 25, y: 4, ch: "o" },
+      { x: 26, y: 4, ch: "o" },
+      { x: 27, y: 4, ch: "o" },
+      { x: 41, y: 5, ch: "o" },
+      { x: 73, y: 5, ch: "o" },
+      { x: 89, y: 6, ch: "o" },
+      { x: 89, y: 4, ch: "o" },
     ],
   }),
 };

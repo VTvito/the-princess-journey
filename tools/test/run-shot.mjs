@@ -1,5 +1,6 @@
 // run-shot.mjs — one-off visual probe: boot a level, hold right, screenshot mid-run.
-// Usage: node tools/test/run-shot.mjs [level]   (server must be up on :8137)
+// Usage: node tools/test/run-shot.mjs [level] [x]   (server must be up on :8137)
+// With [x], the heroine is teleported there first — for eyeballing mid-level set-pieces.
 
 import { launchBrowser, routeVendorKaplay } from "./browser.mjs";
 import { fileURLToPath } from "node:url";
@@ -22,6 +23,15 @@ try {
   await page.waitForFunction(() => window.__pj?.k?.getSceneName() === "menu", null, { timeout: 15000 });
   await page.evaluate(() => window.__pj.k.go("game"));
   await page.waitForFunction(() => window.__pj.k.getSceneName() === "game", null, { timeout: 15000 });
+  const teleportX = Number(process.argv[3] || 0);
+  if (teleportX > 0) {
+    await page.evaluate((x) => {
+      const p = window.__pj.k.get("player")[0];
+      p.pos.x = x;
+      p.pos.y = 200; // drop in from above so she lands on whatever is there
+    }, teleportX);
+    await page.waitForTimeout(700); // let her land and the camera settle
+  }
   await page.evaluate(() => (window.__pj.input.right = true));
   await page.waitForTimeout(900);
   await page.screenshot({ path: join(HERE, "run-shot.png") });

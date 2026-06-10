@@ -131,17 +131,26 @@ export function buildLevel(def) {
 }
 
 // --- Semisolid platform: pass through from below/sides, stand on top (one-way).
+// Hand-rolled one-way logic (kaplay's platformEffector exists but its minified arc math
+// is opaque): resolve the collision only when the body is falling AND its feet are at or
+// above the slab's top — i.e. a landing. Everything else (jumping up through it, walking
+// into its side) passes through.
 function makeSemisolid(x, y, TILE, theme) {
-  k.add([
+  const slab = k.add([
     k.sprite("semisolid"),
     k.pos(x, y),
     k.area({ shape: new k.Rect(k.vec2(0, 0), TILE, TILE * 0.34) }),
     k.body({ isStatic: true }),
-    k.platformEffector(),
     k.color(...theme.solid),
     "solid",
     "semisolid",
   ]);
+  slab.onBeforePhysicsResolve((col) => {
+    const b = col.target;
+    const feetY = b.pos.y + (b.height || 92) / 2;
+    if (b.vel.y < 0 || feetY > slab.pos.y + 18) col.preventResolution();
+  });
+  return slab;
 }
 
 // --- Spring mushroom: auto-bounce on contact from above — no button needed, so it works
@@ -279,8 +288,11 @@ function makeSwooper(cx, cy) {
 }
 
 // --- Roller: a snowball that wakes when the heroine is near and gives chase along the
-// ground — slower than her, so running away always works. Tagged "enemy" → stompable.
+// ground — slower than her, so running away always works. TERRITORIAL: it never leaves
+// ±4 cells of its post (it has no gravity, so an unbounded chase would float it over
+// ravines). Tagged "enemy" → stompable.
 function makeRoller(cx, cy) {
+  const TERRITORY = 256;
   const roller = k.add([
     k.circle(26),
     k.opacity(0),
@@ -289,7 +301,7 @@ function makeRoller(cx, cy) {
     k.area({ scale: 0.85 }),
     k.z(4),
     "enemy",
-    { vx: 0, awake: false },
+    { homeX: cx, vx: 0, awake: false },
   ]);
   const art = roller.add([k.sprite("roller"), k.anchor("center"), k.pos(0, 0)]);
   roller.onUpdate(() => {
@@ -302,10 +314,19 @@ function makeRoller(cx, cy) {
       }
       return;
     }
-    const dir = p ? Math.sign(p.pos.x - roller.pos.x) : 0;
-    roller.vx += dir * MECHANICS.ROLLER_ACCEL * dt;
+    // Chase while she's in range, brake when she leaves (or at the territory borders).
+    const chasing = p && Math.abs(p.pos.x - roller.pos.x) < MECHANICS.ROLLER_RANGE;
+    if (chasing) roller.vx += Math.sign(p.pos.x - roller.pos.x) * MECHANICS.ROLLER_ACCEL * dt;
+    else roller.vx -= Math.sign(roller.vx) * Math.min(Math.abs(roller.vx), MECHANICS.ROLLER_ACCEL * dt);
     roller.vx = Math.max(-MECHANICS.ROLLER_MAX, Math.min(MECHANICS.ROLLER_MAX, roller.vx));
     roller.move(roller.vx, 0);
+    if (roller.pos.x < roller.homeX - TERRITORY) {
+      roller.pos.x = roller.homeX - TERRITORY;
+      roller.vx = 0;
+    } else if (roller.pos.x > roller.homeX + TERRITORY) {
+      roller.pos.x = roller.homeX + TERRITORY;
+      roller.vx = 0;
+    }
     art.flipX = roller.vx < 0;
   });
   return roller;

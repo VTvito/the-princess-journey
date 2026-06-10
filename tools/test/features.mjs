@@ -169,6 +169,34 @@ try {
   check("stomp defeats the enemy", stomp.ok, stomp.why || stomp.enemies);
   check("hit-stop restores time", stomp.timeScale === 1, `timeScale=${stomp.timeScale}`);
 
+  // --- Phase-4 mechanics on Livello 2: the spring launches her, the checkpoint flag
+  // arms a mid-level respawn (asserted after the death below). ---
+  const springProbe = await page.evaluate(async () => {
+    const k = window.__pj.k;
+    const player = k.get("player")[0];
+    const spring = k.get("spring")[0];
+    if (!spring) return { ok: false, why: "no spring on level 2" };
+    player.pos.x = spring.pos.x + 20;
+    player.pos.y = spring.pos.y - 80;
+    player.vel.y = 100; // dropping onto the cap
+    await new Promise((r) => setTimeout(r, 250));
+    return { ok: player.vel.y < -700, vy: Math.round(player.vel.y) };
+  });
+  check("spring launches the player", springProbe.ok, springProbe.why || `vy=${springProbe.vy}`);
+
+  const flagX = await page.evaluate(async () => {
+    const k = window.__pj.k;
+    const player = k.get("player")[0];
+    const flag = k.get("checkpoint")[0];
+    if (!flag) return null;
+    player.pos.x = flag.pos.x + 32; // walk through the flag
+    player.pos.y = flag.pos.y + 60;
+    player.vel.y = 0;
+    await new Promise((r) => setTimeout(r, 300));
+    return flag.activated ? flag.pos.x : null;
+  });
+  check("checkpoint flag activates", flagX !== null, `flagX=${flagX}`);
+
   // --- §1 Insert Coin: falling off the world shows the DOM overlay (not Kaplay) ---
   await page.evaluate(() => (window.__pj.k.get("player")[0].pos.y = 999999));
   await page.waitForFunction(() => !document.getElementById("coin-overlay").hidden, null, {
@@ -188,6 +216,56 @@ try {
   );
   const coc = await page.evaluate(() => localStorage.getItem("totaleCoccoline"));
   check("insert coin banks 500", coc === "500", `totaleCoccoline=${coc}`);
+
+  // The respawn after that death must resume from the checkpoint touched above, not the
+  // level's spawn point (Phase-4 checkpoint memory in game.js).
+  const respawnX = await page.evaluate(() => window.__pj.k.get("player")[0].pos.x);
+  check(
+    "respawns at the checkpoint",
+    flagX !== null && Math.abs(respawnX - (flagX + 32)) < 80,
+    `x=${Math.round(respawnX)} vs flag=${flagX}`,
+  );
+
+  // --- Phase-4 crumble platforms (Livello 3): stand on one → it shakes, falls away,
+  // then reforms a few seconds later. ---
+  await page.evaluate(() => localStorage.setItem("pj.currentLevel", "3"));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(
+    () => window.__pj?.k && window.__pj.k.getSceneName() === "menu",
+    null,
+    { timeout: T, polling: 100 },
+  );
+  await page.evaluate(() => window.__pj.k.go("game"));
+  await page.waitForFunction(
+    () => window.__pj.k.getSceneName() === "game" && window.__pj.k.get("crumble").length > 0,
+    null,
+    { timeout: T, polling: 100 },
+  );
+  const crumble = await page.evaluate(async () => {
+    const k = window.__pj.k;
+    const player = k.get("player")[0];
+    const plat = k.get("crumble")[0];
+    player.pos.x = plat.pos.x + 32; // stand on the first ridge tile
+    player.pos.y = plat.pos.y - 60;
+    player.vel.y = 50;
+    const t0 = Date.now();
+    let fell = false;
+    while (Date.now() - t0 < 4000 && !fell) {
+      await new Promise((r) => setTimeout(r, 100));
+      fell = plat.state === "falling" || plat.state === "gone";
+    }
+    if (!fell) return { ok: false, why: `never fell (state=${plat.state})` };
+    player.pos.x = 200; // step away so it can reform in peace
+    player.pos.y = 200;
+    const t1 = Date.now();
+    let reformed = false;
+    while (Date.now() - t1 < 6000 && !reformed) {
+      await new Promise((r) => setTimeout(r, 200));
+      reformed = plat.state === "intact";
+    }
+    return { ok: reformed, why: reformed ? "fell + reformed" : `stuck in ${plat.state}` };
+  });
+  check("crumble platform falls and reforms", crumble.ok, crumble.why);
 
   // --- §2 Finale receipt: shows the running debt ---
   await page.evaluate(() => window.__pj.k.go("finale"));

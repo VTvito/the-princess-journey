@@ -101,7 +101,8 @@ export function registerGameScene() {
     const startPos = checkpointAt ? k.vec2(checkpointAt.x, checkpointAt.y) : spawn;
 
     // The heroine, wearing every skin unlocked so far (spec §3). z above the tiles.
-    const player = makePlayer(char, startPos, unlockedSkinKeys(level));
+    // def.feel lets a level tweak the handling (e.g. the icy level's longer accel ramp).
+    const player = makePlayer(char, startPos, unlockedSkinKeys(level), def.feel || {});
     player.use(k.z(10));
 
     // --- Camera: leads the heroine in her facing direction (Mario-style lookahead) and
