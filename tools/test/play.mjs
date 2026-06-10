@@ -74,16 +74,27 @@ if (LEVELS.length === 0) {
 //
 // Bot tuning (ms). Generous — this checks "is there a path", not speedrunning.
 const POLL = 70; // sample/drive cadence
-const LEVEL_BUDGET = 120000; // wall-clock per level before giving up; headroom for retries (each
-//                              respawn replays from the start) so a few deaths never time out
+const LEVEL_BUDGET = 75000; // wall-clock per level before giving up; checkpoints make retries
+//                             cheap, so 75s leaves ample headroom over a ~25s clean run
 const STALL_FAIL = 4000; // wedged (not deliberately waiting) this long → blocked: report x
-const WAIT_FAIL = 5000; // waiting on a hazard this long → something is wrong
+const WAIT_FAIL = 9000; // waiting (hazard / inbound mover) this long → something is wrong
 const DEATH_TOLERANCE = 15; // respawns allowed before we call the path un-completable (NOT a
 //                             target to minimise — the impeded bot is expected to die some)
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // One round-trip per tick: look ahead, choose run/jump/wait, apply input, read state back.
+//
+// v2 PROBES — all RELATIVE to the heroine's feet (no absolute y-thresholds), so levels are
+// free to add terraces, raised runs and taller maps without re-tuning the bot:
+//   • ground-ahead: any solid top within [-12, +170] px of the feet, ahead of her;
+//   • step-up: a solid top 12–150px ABOVE the feet just ahead → jump the terrace;
+//   • lane hazard: a hazard centre within ±90px of the feet, ahead → hop it;
+//   • enemies: within ±100px of the feet = ground-type (hop), higher = air (run under);
+//   • movers: if no ground ahead but a "mover" platform's path covers the gap, wait at the
+//     edge until it is inbound and level with the feet, then jump on;
+//   • hints: a level def may declare bot.hints = [{x, w?, do:"jump"|"wait"|"run"}] for
+//     exotic set-pieces (exposed via window.__pj.debug.botHints) — geometry stays honest.
 const tick = (page) =>
   page.evaluate(() => {
     const pj = window.__pj;
@@ -107,36 +118,70 @@ const tick = (page) =>
       return out;
     }
     const px = p.pos.x;
+    const feetY = p.pos.y + 46; // collider is ~92 tall, anchored centre
     const grounded = !!p.isGrounded();
     out.grounded = grounded;
 
     const solids = k.get("solid");
     const hazards = k.get("hazard");
     const enemies = k.get("enemy");
-    const cxOf = (o) => o.pos.x + (o.width || 64) / 2; // solids/hazards anchor top-left
+    const cxOf = (o) => o.pos.x + (o.spanW || o.width || 64) / 2; // top-left anchors
+    const spanOf = (o) => o.spanW || o.width || 64;
+    const overlapsAhead = (o, from, to) => px + to > o.pos.x && px + from < o.pos.x + spanOf(o);
 
-    // Lane ground present a little ahead of the feet? (row-6 perches sit at y≈384 and are
-    // excluded by the y>540 floor test, so they don't read as "ground".)
-    const probe = px + 58;
+    // Walkable surface a little ahead of the feet (steps down up to ~170px still count).
     const groundAhead = solids.some(
-      (s) => s.pos.y > 540 && probe >= s.pos.x && probe < s.pos.x + (s.width || 64),
+      (s) => s.pos.y > feetY - 12 && s.pos.y < feetY + 170 && overlapsAhead(s, 40, 96),
     );
-    // A thorn / urchin / ice-spike on the lane just ahead. The look-ahead (px+118) gives the
-    // hop enough lead to clear the spike under the new variable-jump arc (the old px+82 was
-    // tuned to the symmetric arc and sometimes fired too late, clipping the spike on take-off).
+    // A terrace/step rising ahead (a solid top above the feet) → jump to climb it.
+    const stepUp = solids.some(
+      (s) => s.pos.y <= feetY - 12 && s.pos.y > feetY - 150 && overlapsAhead(s, 40, 110),
+    );
+    // A thorn / urchin / spike on the heroine's own lane just ahead (px+118 gives the hop
+    // enough lead to clear it under the variable-jump arc).
     const thornAhead = hazards.some(
-      (h) => !h.falling && h.pos.y > 500 && cxOf(h) > px + 8 && cxOf(h) < px + 118,
+      (h) =>
+        !h.falling &&
+        Math.abs(h.pos.y + (h.height || 32) / 2 - feetY) < 90 &&
+        cxOf(h) > px + 8 &&
+        cxOf(h) < px + 118,
     );
     // A stalactite dropping in the column over / just ahead of the heroine.
     const stalThreat = hazards.some((h) => h.falling && cxOf(h) > px - 24 && cxOf(h) < px + 88);
-    // A ground enemy (crab) to hop over (enemies use a centred anchor).
-    const crabAhead = enemies.some((e) => e.pos.y > 480 && e.pos.x > px + 4 && e.pos.x < px + 96);
-    // An air enemy (flyer) just ahead — run underneath, don't hop into it.
-    const flyerAhead = enemies.some((e) => e.pos.y <= 480 && e.pos.x > px - 24 && e.pos.x < px + 96);
+    // Enemies relative to the feet: near = hop over it, well above = run underneath.
+    const groundEnemyAhead = enemies.some(
+      (e) => Math.abs(e.pos.y - feetY) < 100 && e.pos.x > px + 4 && e.pos.x < px + 96,
+    );
+    const airEnemyAhead = enemies.some(
+      (e) => e.pos.y < feetY - 100 && e.pos.x > px - 24 && e.pos.x < px + 96,
+    );
 
     let action = "run";
     if (stalThreat) action = "wait";
-    else if ((!groundAhead || thornAhead || crabAhead) && !flyerAhead) action = "jump";
+    else if ((!groundAhead || thornAhead || groundEnemyAhead || stepUp) && !airEnemyAhead) action = "jump";
+    else if (!groundAhead) action = "jump"; // an air enemy never blocks a mandatory gap jump
+
+    // Movers: if the gap ahead is covered by a moving platform's travel range, ride it —
+    // wait at the edge until it is inbound and roughly level with the feet, then hop on.
+    if (!groundAhead && action === "jump") {
+      const mover = solids.find(
+        (s) =>
+          s.is("mover") &&
+          px + 200 > s.base.x - Math.abs(s.ampX) &&
+          px + 40 < s.base.x + Math.abs(s.ampX) + spanOf(s),
+      );
+      if (mover) {
+        const top = mover.pos.y;
+        const reachable = top > feetY - 130 && top < feetY + 160;
+        const inbound = mover.pos.x + spanOf(mover) > px + 30 && mover.pos.x < px + 150;
+        if (!(reachable && inbound)) action = "wait";
+      }
+    }
+
+    // Set-piece hints from the level def override the generic rules in their window.
+    for (const h of pj.debug.botHints || []) {
+      if (px >= h.x && px < h.x + (h.w || 80)) action = h.do;
+    }
 
     inp.left = false;
     inp.right = action !== "wait";

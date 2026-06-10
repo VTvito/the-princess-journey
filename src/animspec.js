@@ -38,4 +38,8 @@ export const WORLD_SHEETS = {
   crab: { sliceX: 4, anims: { walk: { from: 0, to: 3, speed: 8, loop: true } } },
   flyer: { sliceX: 4, anims: { fly: { from: 0, to: 3, speed: 10, loop: true } } },
   portal: { sliceX: 4, anims: { shimmer: { from: 0, to: 3, speed: 5, loop: true } } },
+  spring: { sliceX: 3, anims: { bounce: { from: 1, to: 2, speed: 14, loop: false } } },
+  flag: { sliceX: 4, anims: { wave: { from: 0, to: 3, speed: 6, loop: true } } },
+  swooper: { sliceX: 4, anims: { float: { from: 0, to: 3, speed: 7, loop: true } } },
+  roller: { sliceX: 4, anims: { roll: { from: 0, to: 3, speed: 12, loop: true } } },
 };

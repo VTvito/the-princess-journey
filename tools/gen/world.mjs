@@ -108,6 +108,18 @@ function tileHazardIcicle() {
   return img;
 }
 
+// One-way platform: a thin slab with bracket feet — the heroine passes from below and
+// stands on top (platformEffector in build.js). Full width so runs join seamlessly.
+function tileSemisolid() {
+  const img = newImg(T, T);
+  fillRect(img, 0, 0, T, 1, G.hi); // lit walking surface
+  fillRect(img, 0, 1, T, 4, G.lo);
+  fillRect(img, 0, 4, T, 5, G.lo2); // shaded underside
+  fillRect(img, 2, 5, 4, 8, G.lo2); // bracket feet
+  fillRect(img, 12, 5, 14, 8, G.lo2);
+  return img;
+}
+
 // --- grass caps --------------------------------------------------------------------
 
 // Transparent overlay tinted theme.solidTop: blades on the very top, a lit band, then a
@@ -127,7 +139,7 @@ function tileGrassCap(bladeXs, phase) {
 // ASSETS.tiles.frames in src/config.js.
 export const TILE_FRAMES = [
   "ground_top", "ground_top_2", "ground_top_l", "ground_top_r",
-  "ground_fill", "ground_fill_2", "platform",
+  "ground_fill", "ground_fill_2", "platform", "semisolid",
   "hazard_spike", "hazard_icicle",
   "grass_cap", "grass_cap_2",
 ];
@@ -141,6 +153,7 @@ export function buildTileAtlas() {
     ground_fill: tileGroundFill(11),
     ground_fill_2: tileGroundFill(29, true),
     platform: tilePlatform(),
+    semisolid: tileSemisolid(),
     hazard_spike: tileHazardSpike(),
     hazard_icicle: tileHazardIcicle(),
     grass_cap: tileGrassCap([1, 4, 7, 10, 13], 0),
@@ -304,3 +317,94 @@ function paintPortal(phase = 0) {
 }
 
 export const buildPortalStrip = () => strip([0, 1, 2, 3].map(paintPortal), 24, 40);
+
+// --- spring mushroom (16×16, 3 frames: rest / squashed / extended) -----------------------
+
+function paintSpring(phase = 0) {
+  const img = newImg(16, 16);
+  const cap = [231, 150, 173]; // rose cap — reads "bouncy", fits every theme
+  const capDark = darken(cap, 0.8);
+  const stem = [236, 228, 208];
+  // Cap height by phase: rest, squashed flat, stretched tall.
+  const capTop = [6, 9, 2][phase];
+  const stemTop = [10, 12, 8][phase];
+  fillRect(img, 6, stemTop, 10, 15, stem); // stem
+  fillRect(img, 6, 14, 10, 15, darken(stem, 0.8));
+  fillTrap(img, capTop, stemTop + 1, 7.5, 3.5, 6.5, cap); // cap
+  fillRect(img, 1, stemTop - 1, 15, stemTop + 1, capDark); // cap rim
+  pset(img, 5, capTop + 1, [255, 230, 238]); // sheen
+  pset(img, 6, capTop + 1, [255, 230, 238]);
+  pset(img, 10, capTop + 2, [255, 255, 255]); // dot
+  outline(img, OUT);
+  return img;
+}
+
+export const buildSpringStrip = () => strip([0, 1, 2].map(paintSpring), 16, 16);
+
+// --- checkpoint flag (16×24, 4 frames waving) ---------------------------------------------
+
+function paintFlag(phase = 0) {
+  const img = newImg(16, 24);
+  const pole = [120, 100, 80];
+  const cloth = [212, 175, 55]; // gold pennant
+  fillRect(img, 3, 1, 5, 23, pole);
+  pset(img, 3, 0, [235, 220, 150]); // finial
+  pset(img, 4, 0, [235, 220, 150]);
+  // Waving pennant: tip rises and falls with the phase.
+  const tipY = [4, 5, 6, 5][phase];
+  const sag = [0, 1, 1, 0][phase];
+  fillTrap(img, 2, 9 + sag, 5, 0.5, 0.5, cloth); // hoist edge (vertical band by the pole)
+  for (let x = 5; x <= 13; x++) {
+    const f = (x - 5) / 8;
+    const top = Math.round(2 + (tipY - 2) * f + sag * Math.sin(f * Math.PI));
+    fillRect(img, x, top, x + 1, top + Math.round(6 * (1 - f) + 1), cloth);
+  }
+  fillRect(img, 5, 8 + sag, 9, 9 + sag, darken(cloth, 0.8)); // shaded hem near the pole
+  outline(img, OUT);
+  return img;
+}
+
+export const buildFlagStrip = () => strip([0, 1, 2, 3].map(paintFlag), 16, 24);
+
+// --- swooper: a lantern-ghost that dives (12×12, 4 frames, tail sway) -----------------------
+
+function paintSwooper(phase = 0) {
+  const img = newImg(12, 12);
+  const body = [240, 214, 150]; // warm paper-lantern glow
+  const trim = [150, 60, 60];
+  const sway = [-1, 0, 1, 0][phase];
+  fillDisc(img, 6, 5, 3.6, body);
+  fillRect(img, 4, 1, 9, 2, trim); // little cap
+  // Wisp tail trailing under it.
+  pset(img, 6 + sway, 9, body);
+  pset(img, 6 - sway, 10, body);
+  pset(img, 6 + sway, 11, darken(body, 0.85));
+  pset(img, 4, 5, [60, 40, 40]); // sleepy eyes
+  pset(img, 8, 5, [60, 40, 40]);
+  fillRect(img, 5, 7, 8, 8, darken(body, 0.8)); // mouth shadow
+  outline(img, OUT);
+  return img;
+}
+
+export const buildSwooperStrip = () => strip([0, 1, 2, 3].map(paintSwooper), 12, 12);
+
+// --- roller: a chasing snowball (14×14, 4 rotation frames) ----------------------------------
+
+function paintRoller(phase = 0) {
+  const img = newImg(14, 14);
+  const snow = [238, 244, 252];
+  const shade = [196, 210, 230];
+  fillDisc(img, 7, 7, 5.6, snow);
+  fillDisc(img, 8.5, 8.5, 4, shade); // bottom-right shading
+  fillDisc(img, 6, 6, 3.6, snow);
+  // Rotating speckles show the spin (positions advance with the phase).
+  const a = (phase / 4) * Math.PI * 2;
+  for (const off of [0, (Math.PI * 2) / 3, (Math.PI * 4) / 3]) {
+    pset(img, Math.round(7 + Math.cos(a + off) * 3.4), Math.round(7 + Math.sin(a + off) * 3.4), shade);
+  }
+  pset(img, 5, 5, [255, 255, 255]); // glint
+  outline(img, [150, 165, 190]); // soft outline — a black ring would read "bomb"
+  return img;
+}
+
+export const buildRollerStrip = () => strip([0, 1, 2, 3].map(paintRoller), 14, 14);

@@ -15,6 +15,7 @@ import {
   TILE_FRAMES, buildTileAtlas, buildSpinStrip,
   paintApple, paintPearl, paintLantern, paintCrystal,
   buildCrabStrip, buildFlyerStrip, buildPortalStrip,
+  buildSpringStrip, buildFlagStrip, buildSwooperStrip, buildRollerStrip,
 } from "./world.mjs";
 import { BG_THEMES, buildSky, buildMid, buildNear } from "./backgrounds.mjs";
 import { buildSfx, SONGS, encodeWav, normalize } from "./audio.mjs";
@@ -50,6 +51,10 @@ writeSprite("crystal.png", buildSpinStrip(paintCrystal));
 writeSprite("crab.png", buildCrabStrip());
 writeSprite("flyer.png", buildFlyerStrip());
 writeSprite("portal.png", buildPortalStrip());
+writeSprite("spring.png", buildSpringStrip());
+writeSprite("flag.png", buildFlagStrip());
+writeSprite("swooper.png", buildSwooperStrip());
+writeSprite("roller.png", buildRollerStrip());
 
 // Tile atlas — one strip, frame offsets defined by TILE_FRAMES order (see config.js).
 writeFileSync(join(TILES_DIR, "tileset.png"), encodeScaled(buildTileAtlas()));

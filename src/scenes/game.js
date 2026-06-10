@@ -12,6 +12,7 @@ import {
   CHARACTERS,
   PHYSICS,
   CAMERA,
+  MECHANICS,
   SCORE,
   POWERUP,
   MAX_LEVEL,
@@ -50,6 +51,13 @@ function focusCanvas() {
   canvas?.focus?.();
 }
 
+// Checkpoint memory (spec Phase 4): survives the k.go("game") restart that the Insert
+// Coin flow uses, but resets when the level changes or the scene is entered fresh from
+// the menu (so "Nuova partita" can never inherit a stale checkpoint).
+let checkpointAt = null;
+let checkpointLevel = 0;
+let respawningFromDeath = false;
+
 export function registerGameScene() {
   k.scene("game", () => {
     // Defensive: clear any DOM overlay left over from another scene.
@@ -66,6 +74,7 @@ export function registerGameScene() {
     const char = CHARACTERS.find((c) => c.id === charId) || CHARACTERS[0];
     const level = getCurrentLevel();
     const def = getLevelDef(level);
+    if (dbg) dbg.botHints = def.bot?.hints || []; // set-piece hints for the autoplay bot
     const theme = def.theme;
     const icon = theme.collectibleIcon || "🍎";
     const hudColor = theme.hudText || PALETTE.cream; // some themes (snow) need dark text
@@ -84,8 +93,15 @@ export function registerGameScene() {
     // Build the tile map (platforms, ravines, hazards, collectibles, enemies, goal).
     const { spawn, worldW, worldH, collectiblesTotal } = buildLevel(def);
 
+    // Respawn at the last touched checkpoint only when coming back from a death on this
+    // same level; any other entry starts clean from the level's spawn point.
+    if (!respawningFromDeath || checkpointLevel !== level) checkpointAt = null;
+    checkpointLevel = level;
+    respawningFromDeath = false;
+    const startPos = checkpointAt ? k.vec2(checkpointAt.x, checkpointAt.y) : spawn;
+
     // The heroine, wearing every skin unlocked so far (spec §3). z above the tiles.
-    const player = makePlayer(char, spawn, unlockedSkinKeys(level));
+    const player = makePlayer(char, startPos, unlockedSkinKeys(level));
     player.use(k.z(10));
 
     // --- Camera: leads the heroine in her facing direction (Mario-style lookahead) and
@@ -122,7 +138,8 @@ export function registerGameScene() {
       showInsertCoin(() => {
         sfx("coin"); // arcade-coin chime as the debt is banked
         addCoccoline(500);
-        k.go("game"); // restart the current level from the beginning
+        respawningFromDeath = true; // the restart below may resume from a checkpoint
+        k.go("game"); // restart the current level (from the last checkpoint, if any)
       });
     }
     // Fell into a ravine / off the bottom of the world.
@@ -155,6 +172,25 @@ export function registerGameScene() {
         die();
       }
     });
+    // Checkpoint flag (Phase 4): touching it sets the respawn point for this level —
+    // deaths still cost 500 Coccoline (the meta is sacred), but the retry starts here.
+    player.onCollide("checkpoint", (flag) => {
+      if (finished || dead || flag.activated) return;
+      flag.activated = true;
+      // Same semantics as the spawn point: x centred on the pole, y = the lane cell top.
+      checkpointAt = { x: flag.pos.x + 32, y: flag.pos.y + 64 };
+      flag.art?.use(k.color(255, 200, 150)); // the pennant warms up once it's yours
+      confettiBurst(k.vec2(flag.pos.x + 32, flag.pos.y + 40), [PALETTE.gold, PALETTE.cream, PALETTE.rose]);
+      sfx("checkpoint");
+    });
+
+    // Updraft columns (Phase 4, coral level): while inside, the fall is caught and she is
+    // lifted gently toward the column's rise speed. Jumping inside still works.
+    player.onCollideUpdate("updraft", () => {
+      if (finished || dead) return;
+      player.vel.y += (MECHANICS.UPDRAFT_LIFT - player.vel.y) * (1 - Math.exp(-k.dt() * 2.5));
+    });
+
     // Star power-up: grant a window of invincibility + points, with a pulsing aura on the
     // heroine for feedback. Re-grabbing simply refreshes the timer.
     player.onCollide("powerup", (star) => {
@@ -255,6 +291,7 @@ export function registerGameScene() {
     player.onCollide("goal", () => {
       if (finished || dead) return;
       finished = true;
+      checkpointAt = null; // the journey continues — next level starts clean
       if (dbg) dbg.reachedGoal = true;
       player.setAnim("celebrate"); // arms up while the reward card shows
       sfx("goal"); // triumphant arpeggio on clearing the level

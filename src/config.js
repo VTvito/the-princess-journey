@@ -123,6 +123,22 @@ export const PHYSICS = {
   STOMP_BOUNCE: 520, // upward velocity after stomping an enemy (Mario-style hop, < JUMP_FORCE)
 };
 
+// Level-mechanic tunables (Phase 4): per-level identity pieces built by src/levels/build.js.
+// Units: px, px/s, s.
+export const MECHANICS = {
+  SPRING_VEL: 1100,        // upward velocity from a spring mushroom (auto-bounce, no button)
+  CRUMBLE_SHAKE: 0.5,      // s of trembling before a crumble platform falls
+  CRUMBLE_RESPAWN: 3,      // s before a fallen crumble platform reforms
+  UPDRAFT_LIFT: -300,      // vel.y is eased toward this while inside an updraft column
+  SWOOP_RANGE: 240,        // px: a swooper notices the heroine and dives
+  SWOOP_DROP: 190,         // px: how far it dives toward the lane
+  SWOOP_TIME: 1.3,         // s: full dive-and-return arc
+  SWOOP_COOLDOWN: 1.6,     // s between dives
+  ROLLER_RANGE: 340,       // px: a roller wakes and gives chase
+  ROLLER_ACCEL: 420,       // px/s² chase acceleration
+  ROLLER_MAX: 230,         // px/s top speed (slower than the heroine — outrunnable)
+};
+
 // Camera feel (spec §2): the camera leads the heroine in her facing direction so she sees
 // where she's going (Mario-style), easing toward the target instead of snapping.
 export const CAMERA = {
@@ -168,6 +184,11 @@ export const ASSETS = {
     crab: "assets/sprites/crab.png",
     flyer: "assets/sprites/flyer.png",
     portal: "assets/sprites/portal.png",
+    // Phase-4 mechanics (see src/levels/build.js legend).
+    spring: "assets/sprites/spring.png",
+    flag: "assets/sprites/flag.png",
+    swooper: "assets/sprites/swooper.png",
+    roller: "assets/sprites/roller.png",
   },
 
   // Tile atlas (spec §2) — one 64px strip tinted per theme at runtime. Frames map names to
@@ -185,10 +206,11 @@ export const ASSETS = {
       ground_fill: { x: 256, y: 0, width: 64, height: 64 },
       ground_fill_2: { x: 320, y: 0, width: 64, height: 64 },
       platform: { x: 384, y: 0, width: 64, height: 64 },
-      hazard_spike: { x: 448, y: 0, width: 64, height: 64 },
-      hazard_icicle: { x: 512, y: 0, width: 64, height: 64 },
-      grass_cap: { x: 576, y: 0, width: 64, height: 64 },
-      grass_cap_2: { x: 640, y: 0, width: 64, height: 64 },
+      semisolid: { x: 448, y: 0, width: 64, height: 64 },
+      hazard_spike: { x: 512, y: 0, width: 64, height: 64 },
+      hazard_icicle: { x: 576, y: 0, width: 64, height: 64 },
+      grass_cap: { x: 640, y: 0, width: 64, height: 64 },
+      grass_cap_2: { x: 704, y: 0, width: 64, height: 64 },
     },
   },
 

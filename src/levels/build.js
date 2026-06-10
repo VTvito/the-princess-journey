@@ -6,10 +6,16 @@
 //
 // Tile legend: "=" solid  "^" hazard (thorns/urchins)  "o" collectible  "*" star power-up
 //              "c" crab enemy  "f" flyer enemy (air)  "s" stalactite hazard (falls)
+//              "#" semisolid one-way platform   "M" spring mushroom   "!" crumble platform
+//              "F" checkpoint flag   "g" swooper (diving ghost)   "r" roller (chasing ball)
+//              "w" updraft column cell
 //              "@" spawn   ">" goal   " " air (a gap in the ground rows is a ravine)
+// Moving platforms are not ASCII: a level may add `movers: [{x,y,w,dx,dy,period,phase}]`
+// (cells; dx/dy = travel amplitude in cells) — see makeMover.
 
 import { k } from "../kaplayCtx.js";
-import { PALETTE, ENEMIES, HAZARDS } from "../config.js";
+import { PALETTE, ENEMIES, HAZARDS, MECHANICS, PHYSICS } from "../config.js";
+import { sfx } from "../sfx.js";
 
 /**
  * Render a level's tile map.
@@ -64,6 +70,27 @@ export function buildLevel(def) {
           }
           break;
         }
+        case "#":
+          makeSemisolid(x, y, TILE, theme);
+          break;
+        case "M":
+          makeSpring(x, y, TILE);
+          break;
+        case "!":
+          makeCrumble(x, y, TILE, theme);
+          break;
+        case "F":
+          makeCheckpoint(x, y, TILE);
+          break;
+        case "g":
+          makeSwooper(x + TILE / 2, y + TILE / 2);
+          break;
+        case "r":
+          makeRoller(x + TILE / 2, y + TILE / 2);
+          break;
+        case "w":
+          makeUpdraft(x, y, TILE, theme);
+          break;
         case "^":
           makeHazard(x, y, TILE, theme);
           break;
@@ -96,8 +123,256 @@ export function buildLevel(def) {
     }
   });
 
+  // Moving platforms (data-driven, not ASCII — see the legend note at the top).
+  for (const m of def.movers || []) makeMover(m, TILE, theme);
+
   if (!spawn) spawn = k.vec2(TILE * 1.5, 0); // defensive fallback if a level omits "@"
   return { spawn, worldW, worldH, collectiblesTotal };
+}
+
+// --- Semisolid platform: pass through from below/sides, stand on top (one-way).
+function makeSemisolid(x, y, TILE, theme) {
+  k.add([
+    k.sprite("semisolid"),
+    k.pos(x, y),
+    k.area({ shape: new k.Rect(k.vec2(0, 0), TILE, TILE * 0.34) }),
+    k.body({ isStatic: true }),
+    k.platformEffector(),
+    k.color(...theme.solid),
+    "solid",
+    "semisolid",
+  ]);
+}
+
+// --- Spring mushroom: auto-bounce on contact from above — no button needed, so it works
+// identically for a casual human and the autoplay bot. Launches higher than a jump.
+function makeSpring(x, y, TILE) {
+  const spring = k.add([
+    k.rect(TILE * 0.7, TILE * 0.6),
+    k.opacity(0),
+    k.pos(x + TILE * 0.15, y + TILE * 0.4), // collider on the cap, low in the cell
+    k.area(),
+    k.z(3),
+    "spring",
+  ]);
+  const art = spring.add([k.sprite("spring"), k.anchor("bot"), k.pos(TILE * 0.35, TILE * 0.6)]);
+  spring.onCollide("player", (p) => {
+    if (p.pos.y > spring.pos.y) return; // only a bounce when she lands on the cap
+    p.vel.y = -MECHANICS.SPRING_VEL;
+    p.squashX = 0.8; // extra-tall stretch on the way up
+    p.squashY = 1.3;
+    art.play("bounce");
+    k.wait(0.3, () => (art.frame = 0));
+    sfx("spring");
+  });
+  return spring;
+}
+
+// --- Crumble platform: trembles when stood on, falls away, reforms a moment later.
+function makeCrumble(x, y, TILE, theme) {
+  const home = k.vec2(x, y);
+  const plat = k.add([
+    k.sprite("platform"),
+    k.pos(home),
+    k.area(),
+    k.body({ isStatic: true }),
+    k.color(...theme.solid),
+    k.opacity(1),
+    "solid",
+    "crumble",
+    { state: "intact", t: 0, vy: 0 },
+  ]);
+  plat.onCollide("player", (p) => {
+    if (plat.state === "intact" && p.pos.y < plat.pos.y) {
+      plat.state = "shaking";
+      plat.t = 0;
+      sfx("crumble");
+    }
+  });
+  plat.onUpdate(() => {
+    const dt = k.dt();
+    if (plat.state === "shaking") {
+      plat.t += dt;
+      plat.pos.x = home.x + Math.sin(plat.t * 60) * 2; // tremble telegraph
+      if (plat.t >= MECHANICS.CRUMBLE_SHAKE) {
+        plat.state = "falling";
+        plat.vy = 0;
+        plat.pos.x = home.x;
+        plat.unuse("body"); // stops being standable the moment it lets go
+      }
+    } else if (plat.state === "falling") {
+      plat.vy += PHYSICS.GRAVITY * 0.8 * dt;
+      plat.pos.y += plat.vy * dt;
+      plat.opacity = Math.max(0, plat.opacity - dt * 1.6);
+      if (plat.opacity <= 0) {
+        plat.state = "gone";
+        plat.t = 0;
+      }
+    } else if (plat.state === "gone") {
+      plat.t += dt;
+      if (plat.t >= MECHANICS.CRUMBLE_RESPAWN) {
+        plat.pos = k.vec2(home);
+        plat.opacity = 1;
+        plat.use(k.body({ isStatic: true }));
+        plat.state = "intact";
+      }
+    }
+  });
+  return plat;
+}
+
+// --- Checkpoint flag: waving pennant; the game scene wires activation (respawn point +
+// chime + confetti) via the "checkpoint" tag.
+function makeCheckpoint(x, y, TILE) {
+  const flag = k.add([
+    k.rect(TILE, TILE * 2),
+    k.opacity(0),
+    k.pos(x, y - TILE), // collider covers the pole's two cells
+    k.area(),
+    k.z(2),
+    "checkpoint",
+    { activated: false },
+  ]);
+  const art = flag.add([k.sprite("flag"), k.anchor("bot"), k.pos(TILE / 2, TILE * 2)]);
+  art.play("wave");
+  flag.art = art;
+  return flag;
+}
+
+// --- Swooper: hovers in the air, dives toward the lane when the heroine comes near, then
+// floats back up. Tagged "enemy" → stompable, lethal on side contact (same rules as all).
+function makeSwooper(cx, cy) {
+  const swooper = k.add([
+    k.rect(34, 30, { radius: 10 }),
+    k.opacity(0),
+    k.pos(cx, cy),
+    k.anchor("center"),
+    k.area({ scale: 0.85 }),
+    k.z(4),
+    "enemy",
+    { baseY: cy, diving: false, t: 0, cooldown: 0 },
+  ]);
+  const art = swooper.add([k.sprite("swooper"), k.anchor("center"), k.pos(0, 0)]);
+  art.play("float");
+  swooper.onUpdate(() => {
+    const dt = k.dt();
+    const p = k.get("player")[0];
+    if (!swooper.diving) {
+      swooper.cooldown -= dt;
+      swooper.pos.y = swooper.baseY + Math.sin(k.time() * 2.2) * 8; // idle hover
+      if (p && swooper.cooldown <= 0 && Math.abs(p.pos.x - swooper.pos.x) < MECHANICS.SWOOP_RANGE) {
+        swooper.diving = true;
+        swooper.t = 0;
+      }
+    } else {
+      swooper.t += dt;
+      const f = Math.min(1, swooper.t / MECHANICS.SWOOP_TIME);
+      swooper.pos.y = swooper.baseY + Math.sin(f * Math.PI) * MECHANICS.SWOOP_DROP; // down & back
+      if (p) swooper.pos.x += Math.sign(p.pos.x - swooper.pos.x) * 46 * dt; // lean toward her
+      if (f >= 1) {
+        swooper.diving = false;
+        swooper.cooldown = MECHANICS.SWOOP_COOLDOWN;
+      }
+    }
+  });
+  return swooper;
+}
+
+// --- Roller: a snowball that wakes when the heroine is near and gives chase along the
+// ground — slower than her, so running away always works. Tagged "enemy" → stompable.
+function makeRoller(cx, cy) {
+  const roller = k.add([
+    k.circle(26),
+    k.opacity(0),
+    k.pos(cx, cy),
+    k.anchor("center"),
+    k.area({ scale: 0.85 }),
+    k.z(4),
+    "enemy",
+    { vx: 0, awake: false },
+  ]);
+  const art = roller.add([k.sprite("roller"), k.anchor("center"), k.pos(0, 0)]);
+  roller.onUpdate(() => {
+    const dt = k.dt();
+    const p = k.get("player")[0];
+    if (!roller.awake) {
+      if (p && Math.abs(p.pos.x - roller.pos.x) < MECHANICS.ROLLER_RANGE) {
+        roller.awake = true;
+        art.play("roll");
+      }
+      return;
+    }
+    const dir = p ? Math.sign(p.pos.x - roller.pos.x) : 0;
+    roller.vx += dir * MECHANICS.ROLLER_ACCEL * dt;
+    roller.vx = Math.max(-MECHANICS.ROLLER_MAX, Math.min(MECHANICS.ROLLER_MAX, roller.vx));
+    roller.move(roller.vx, 0);
+    art.flipX = roller.vx < 0;
+  });
+  return roller;
+}
+
+// --- Updraft column cell: while inside, the heroine's fall is caught and she is lifted
+// gently (the game scene applies the lift via the "updraft" tag). Faint visual column +
+// the occasional rising bubble so the air current reads.
+function makeUpdraft(x, y, TILE, theme) {
+  k.add([
+    k.rect(TILE, TILE),
+    k.pos(x, y),
+    k.area(),
+    k.opacity(0.07),
+    k.color(...(theme.collectibleGlow || PALETTE.cream)),
+    k.z(1),
+    "updraft",
+  ]);
+  k.loop(0.6, () => {
+    const b = k.add([
+      k.circle(k.rand(2, 4)),
+      k.pos(x + k.rand(8, TILE - 8), y + TILE),
+      k.anchor("center"),
+      k.color(...(theme.collectibleGlow || PALETTE.cream)),
+      k.opacity(0.5),
+      k.z(2),
+      { vy: k.rand(60, 110), age: 0 },
+    ]);
+    b.onUpdate(() => {
+      b.age += k.dt();
+      b.pos.y -= b.vy * k.dt();
+      b.opacity = Math.max(0, 0.5 - b.age * 0.45);
+      if (b.opacity <= 0) k.destroy(b);
+    });
+  });
+}
+
+// --- Moving platform: a small slab gliding on a sine path; riders are carried natively by
+// the physics (the player body sticks to the platform it stands on). Tagged "mover" so the
+// autoplay bot can wait for it at a gap's edge.
+function makeMover(m, TILE, theme) {
+  const w = m.w || 2;
+  const base = k.vec2(m.x * TILE, m.y * TILE);
+  const mover = k.add([
+    k.pos(base),
+    k.area({ shape: new k.Rect(k.vec2(0, 0), w * TILE, TILE * 0.6) }),
+    k.body({ isStatic: true }),
+    k.z(2),
+    "solid",
+    "mover",
+    {
+      base,
+      spanW: w * TILE, // explicit width — the container has no sprite to derive it from
+      ampX: (m.dx || 0) * TILE,
+      ampY: (m.dy || 0) * TILE,
+      period: m.period || 3,
+      phase: m.phase || 0,
+    },
+  ]);
+  for (let i = 0; i < w; i++) {
+    mover.add([k.sprite("platform"), k.pos(i * TILE, 0), k.color(...theme.solid)]);
+  }
+  mover.onUpdate(() => {
+    const s = Math.sin((k.time() / mover.period) * Math.PI * 2 + mover.phase);
+    mover.pos = k.vec2(Math.round(mover.base.x + mover.ampX * s), Math.round(mover.base.y + mover.ampY * s));
+  });
+  return mover;
 }
 
 // --- Static hazard (thorns / sea urchins): a low spiky block, tagged "hazard".
