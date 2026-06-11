@@ -8,7 +8,8 @@
 //              "c" crab enemy  "f" flyer enemy (air)  "s" stalactite hazard (falls)
 //              "#" semisolid one-way platform   "M" spring mushroom   "!" crumble platform
 //              "F" checkpoint flag   "g" swooper (diving ghost)   "r" roller (chasing ball)
-//              "w" updraft column cell
+//              "w" updraft column cell   "B" breeze column cell (horizontal petal current)
+//              "P" pendulum chandelier (anchor cell; the lethal bob swings below)
 //              "@" spawn   ">" goal   " " air (a gap in the ground rows is a ravine)
 // Moving platforms are not ASCII: a level may add `movers: [{x,y,w,dx,dy,period,phase}]`
 // (cells; dx/dy = travel amplitude in cells) — see makeMover.
@@ -94,6 +95,12 @@ export function buildLevel(def) {
           break;
         case "w":
           makeUpdraft(x, y, TILE, theme);
+          break;
+        case "B":
+          makeBreeze(x, y, TILE, theme);
+          break;
+        case "P":
+          makePendulum(x + TILE / 2, y + TILE / 2, theme);
           break;
         case "^":
           makeHazard(x, y, TILE, theme);
@@ -422,6 +429,75 @@ function makeUpdraft(x, y, TILE, theme) {
       if (b.opacity <= 0) k.destroy(b);
     });
   });
+}
+
+// --- Breeze column cell (giardino, Livello 5): a horizontal petal current — while inside,
+// the heroine is carried forward and her fall softens (the game scene applies the push via
+// the "breeze" tag). The horizontal twin of makeUpdraft: faint band + drifting petals.
+function makeBreeze(x, y, TILE, theme) {
+  const petal = theme.collectibleGlow || PALETTE.cream;
+  k.add([
+    k.rect(TILE, TILE),
+    k.pos(x, y),
+    k.area(),
+    k.opacity(0.06),
+    k.color(...petal),
+    k.z(1),
+    "breeze",
+  ]);
+  k.loop(0.5, () => {
+    const p = k.add([
+      k.rect(6, 4, { radius: 2 }),
+      k.pos(x, y + k.rand(8, TILE - 8)),
+      k.anchor("center"),
+      k.rotate(k.rand(0, 360)),
+      k.color(...petal),
+      k.opacity(0.55),
+      k.z(2),
+      { vx: k.rand(140, 220), age: 0, spin: k.rand(-180, 180), baseY: 0 },
+    ]);
+    p.baseY = p.pos.y;
+    p.onUpdate(() => {
+      p.age += k.dt();
+      p.pos.x += p.vx * k.dt();
+      p.pos.y = p.baseY + Math.sin(p.age * 6) * 5; // petals flutter as they ride the current
+      p.angle += p.spin * k.dt();
+      p.opacity = Math.max(0, 0.55 - p.age * 0.5);
+      if (p.opacity <= 0) k.destroy(p);
+    });
+  });
+}
+
+// --- Pendulum chandelier (castello, Livello 6): a lethal golden bob swinging on a chain
+// from the anchor cell. Pure math like makeMover (sine swing), lethality like a hazard —
+// the timing puzzle is crossing under it on the off-swing.
+function makePendulum(cx, cy, theme) {
+  const L = MECHANICS.PENDULUM_LENGTH;
+  const phase = cx * 0.01; // desync chandeliers along the level deterministically
+  const anchor = k.add([k.pos(cx, cy), k.z(3)]);
+  anchor.add([k.circle(6), k.anchor("center"), k.pos(0, 0), k.color(120, 100, 70)]); // mount
+  const links = [0.3, 0.55, 0.8].map((f) =>
+    anchor.add([k.circle(3), k.anchor("center"), k.pos(0, L * f), k.color(150, 130, 90), { f }]),
+  );
+  const bob = k.add([
+    k.circle(17),
+    k.pos(cx, cy + L),
+    k.anchor("center"),
+    k.area({ scale: 0.85 }),
+    k.color(...(theme.goal || PALETTE.gold)),
+    k.z(4),
+    "hazard",
+    "pendulum",
+  ]);
+  bob.add([k.circle(9), k.anchor("center"), k.pos(0, -2), k.color(255, 222, 140)]); // candle glow
+  bob.add([k.circle(4), k.anchor("center"), k.pos(0, -8), k.color(255, 250, 220)]); // flame
+  bob.onUpdate(() => {
+    const a = MECHANICS.PENDULUM_ARC * Math.sin((k.time() / MECHANICS.PENDULUM_PERIOD) * Math.PI * 2 + phase);
+    const off = k.vec2(Math.sin(a) * L, Math.cos(a) * L);
+    bob.pos = k.vec2(cx + off.x, cy + off.y);
+    for (const link of links) link.pos = k.vec2(off.x * link.f, off.y * link.f);
+  });
+  return bob;
 }
 
 // --- Moving platform: a small slab gliding on a sine path; riders are carried natively by

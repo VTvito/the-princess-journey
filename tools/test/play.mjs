@@ -1,6 +1,6 @@
 // Autoplay reachability test for The Princess Journey.
 //
-// A rule-based bot drives each playable level (1–4) to its goal in the installed Microsoft
+// A rule-based bot drives each playable level (1–6) to its goal in the installed Microsoft
 // Edge (via playwright-core — no browser download) and asserts the casual path is actually
 // completable. This is the regression guard that would have caught the oversized-player / 1-
 // tile level mismatch that made Livello 1 unplayable: a level whose goal can't be reached
@@ -52,7 +52,7 @@ for (let i = 0; i < args.length; i++) {
 const TARGET = urlArg || process.env.PJ_URL || "http://localhost:8137";
 void dirname(fileURLToPath(import.meta.url)); // (kept for parity with sibling tests)
 const BOOT_TIMEOUT = 15000;
-const ALL_LEVELS = [1, 2, 3, 4];
+const ALL_LEVELS = [1, 2, 3, 4, 5, 6];
 const LEVELS = levelsArg
   ? levelsArg.split(",").map((s) => Number(s.trim())).filter((n) => ALL_LEVELS.includes(n))
   : ALL_LEVELS;
@@ -81,8 +81,10 @@ const STALL_FAIL = 4000; // wedged (not deliberately waiting) this long → bloc
 const WAIT_FAIL = 9000; // waiting (hazard / inbound mover) this long → something is wrong
 const DEATH_TOLERANCE = 30; // total respawns allowed (NOT a target to minimise — the impeded
 //                             bot is expected to die some; enemy/hazard pairs are timing-luck)
-const LOOP_TOLERANCE = 8; // consecutive deaths with NO new forward progress → a genuine death
-//                           loop (bad checkpoint placement, unjumpable hazard) → fail fast
+const LOOP_TOLERANCE = 12; // consecutive deaths with NO new forward progress → a genuine death
+//                            loop (bad checkpoint placement, unjumpable hazard) → fail fast.
+//                            Not too tight: near the goal maxX can't grow between honest
+//                            retries of a timing gate, which would read as a "loop" at 8
 const PROGRESS_EPS = 32; // px of new maxX that count as "progress" between deaths
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

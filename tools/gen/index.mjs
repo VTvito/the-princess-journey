@@ -15,7 +15,7 @@ import {
 } from "./characters.mjs";
 import {
   TILE_FRAMES, buildTileAtlas, buildSpinStrip,
-  paintApple, paintPearl, paintLantern, paintCrystal,
+  paintApple, paintPearl, paintLantern, paintCrystal, paintRose, paintGoblet,
   buildCrabStrip, buildFlyerStrip, buildPortalStrip,
   buildSpringStrip, buildFlagStrip, buildSwooperStrip, buildRollerStrip,
 } from "./world.mjs";
@@ -52,6 +52,8 @@ writeSprite("apple.png", buildSpinStrip(paintApple));
 writeSprite("pearl.png", buildSpinStrip(paintPearl));
 writeSprite("lantern.png", buildSpinStrip(paintLantern));
 writeSprite("crystal.png", buildSpinStrip(paintCrystal));
+writeSprite("rose.png", buildSpinStrip(paintRose));
+writeSprite("goblet.png", buildSpinStrip(paintGoblet));
 writeSprite("crab.png", buildCrabStrip());
 writeSprite("flyer.png", buildFlyerStrip());
 writeSprite("portal.png", buildPortalStrip());

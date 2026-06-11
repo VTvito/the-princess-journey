@@ -200,6 +200,16 @@ export function registerGameScene() {
       player.vel.y += (MECHANICS.UPDRAFT_LIFT - player.vel.y) * (1 - Math.exp(-k.dt() * 2.5));
     });
 
+    // Breeze columns (garden level): a horizontal petal current — extra forward drift,
+    // and the fall is softened to a glide so long assisted jumps feel like floating.
+    player.onCollideUpdate("breeze", () => {
+      if (finished || dead) return;
+      player.move(MECHANICS.BREEZE_PUSH, 0);
+      if (player.vel.y > MECHANICS.BREEZE_FALL) {
+        player.vel.y += (MECHANICS.BREEZE_FALL - player.vel.y) * (1 - Math.exp(-k.dt() * 4));
+      }
+    });
+
     // Star power-up: grant a window of invincibility + points, with a pulsing aura on the
     // heroine for feedback. Re-grabbing simply refreshes the timer.
     player.onCollide("powerup", (star) => {

@@ -204,6 +204,30 @@ export function paintSkin(kind, color, p = POSE) {
     pset(img, 10, 0 + hb, color);
     pset(img, 7, 1 + hb, [235, 220, 150]); // gem
     outline(img, OUT);
+  } else if (kind === "gloves") {
+    // Silk gloves: cover the hand pixel + the lower sleeve, tracking the arm pose
+    // exactly like the body painter (raised in celebration, swinging otherwise).
+    if (p.armsUp) {
+      fillRect(img, 3 + lean, 5 + hb, 4 + lean, 8 + hb, color);
+      fillRect(img, 12 + lean, 5 + hb, 13 + lean, 8 + hb, color);
+    } else {
+      const swing = p.armSwing;
+      fillRect(img, 4 + lean + swing, 13, 5 + lean + swing, 15, color);
+      fillRect(img, 11 + lean - swing, 13, 12 + lean - swing, 15, color);
+    }
+    outline(img, OUT);
+  } else if (kind === "cape") {
+    // Royal cape: a clasp collar at the shoulders + two panels draped at the torso's
+    // sides, trailing with the hair sway so it reads as flowing behind her.
+    const sway = p.hairSway;
+    const hemY = 19 - p.hairLift;
+    fillRect(img, 5 + lean, 9 + hb, 11 + lean, 10 + hb, color); // collar band
+    pset(img, 8 + lean, 10 + hb, [235, 220, 150]); // gold clasp
+    fillRect(img, 3 + lean + sway, 10, 4 + lean + sway, hemY, color); // side panels
+    fillRect(img, 12 + lean + sway, 10, 13 + lean + sway, hemY, color);
+    fillRect(img, 3 + lean + sway, hemY - 1, 4 + lean + sway, hemY, dark); // shaded hems
+    fillRect(img, 12 + lean + sway, hemY - 1, 13 + lean + sway, hemY, dark);
+    outline(img, OUT);
   }
   return img;
 }
@@ -290,4 +314,6 @@ export const SKIN_LAYERS = [
   { file: "bodice.png", kind: "bodice", color: [231, 150, 173] },
   { file: "necklace.png", kind: "necklace", color: [255, 236, 170] },
   { file: "crown.png", kind: "crown", color: [212, 175, 55] },
+  { file: "gloves.png", kind: "gloves", color: [240, 240, 250] },
+  { file: "cape.png", kind: "cape", color: [150, 44, 64] },
 ];

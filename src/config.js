@@ -50,7 +50,7 @@ export const CHARACTERS = [
 ];
 
 // Total playable levels before the finale (spec §4). Used for clamping currentLevel.
-export const MAX_LEVEL = 5;
+export const MAX_LEVEL = 7;
 
 // Skin progression (spec §3) — clothing layers added on top of the base body as levels
 // are cleared. `afterLevel` is the level whose completion unlocks the layer; the keys are
@@ -60,6 +60,8 @@ export const SKINS = [
   { key: "bodice", name: "Corpetto Elegante", afterLevel: 2 },
   { key: "necklace", name: "Collana di Gioielli", afterLevel: 3 },
   { key: "crown", name: "Corona Reale", afterLevel: 4 },
+  { key: "gloves", name: "Guanti di Seta", afterLevel: 5 },
+  { key: "cape", name: "Mantello Reale", afterLevel: 6 },
 ];
 
 // Which skins are worn while playing a given level (derived from progress, not stored):
@@ -137,6 +139,16 @@ export const MECHANICS = {
   ROLLER_RANGE: 340,       // px: a roller wakes and gives chase
   ROLLER_ACCEL: 420,       // px/s² chase acceleration
   ROLLER_MAX: 230,         // px/s top speed (slower than the heroine — outrunnable)
+  // Breeze column (giardino, Livello 5): a horizontal current of petals — while inside,
+  // the heroine is carried forward and her fall is softened (long assisted jumps).
+  BREEZE_PUSH: 230,        // extra px/s of forward drift while inside a breeze column
+  BREEZE_FALL: 0,          // vel.y is eased toward this while falling inside — the petals
+  //                          hold her height, so a glide entered above the gap's lip can
+  //                          never sink into a wall-slide against the far edge
+  // Pendulum chandelier (castello, Livello 6): a lethal bob swinging on a chain.
+  PENDULUM_LENGTH: 170,    // px: chain length from the anchor to the bob's centre
+  PENDULUM_ARC: 1.15,      // rad: max swing angle from vertical (~66°)
+  PENDULUM_PERIOD: 3.2,    // s per full left-right-left swing (slow = readable safe windows)
 };
 
 // Camera feel (spec §2): the camera leads the heroine in her facing direction so she sees
@@ -174,6 +186,8 @@ export const ASSETS = {
     bodice: "assets/sprites/bodice.png",
     necklace: "assets/sprites/necklace.png",
     crown: "assets/sprites/crown.png",
+    gloves: "assets/sprites/gloves.png",
+    cape: "assets/sprites/cape.png",
     // World sprites (spec §2) — per-level collectibles, enemies, and the goal portal.
     // Collectibles/enemies are drawn in natural colour; the portal is neutral grey and
     // tinted with theme.goal at build time (see src/levels/build.js).
@@ -181,6 +195,8 @@ export const ASSETS = {
     pearl: "assets/sprites/pearl.png",
     lantern: "assets/sprites/lantern.png",
     crystal: "assets/sprites/crystal.png",
+    rose: "assets/sprites/rose.png",
+    goblet: "assets/sprites/goblet.png",
     crab: "assets/sprites/crab.png",
     flyer: "assets/sprites/flyer.png",
     portal: "assets/sprites/portal.png",
@@ -204,6 +220,12 @@ export const ASSETS = {
     deco_pine: "assets/sprites/deco_pine.png",
     deco_snowdrift: "assets/sprites/deco_snowdrift.png",
     deco_crystal_big: "assets/sprites/deco_crystal_big.png",
+    deco_rosebush: "assets/sprites/deco_rosebush.png",
+    deco_ivyarch: "assets/sprites/deco_ivyarch.png",
+    deco_fountain: "assets/sprites/deco_fountain.png",
+    deco_candelabra: "assets/sprites/deco_candelabra.png",
+    deco_armor: "assets/sprites/deco_armor.png",
+    deco_royalbanner: "assets/sprites/deco_royalbanner.png",
   },
 
   // Tile atlas (spec §2) — one 64px strip tinted per theme at runtime. Frames map names to
@@ -243,6 +265,12 @@ export const ASSETS = {
     snow_sky: "assets/backgrounds/snow_sky.png",
     snow_mid: "assets/backgrounds/snow_mid.png",
     snow_near: "assets/backgrounds/snow_near.png",
+    garden_sky: "assets/backgrounds/garden_sky.png",
+    garden_mid: "assets/backgrounds/garden_mid.png",
+    garden_near: "assets/backgrounds/garden_near.png",
+    castle_sky: "assets/backgrounds/castle_sky.png",
+    castle_mid: "assets/backgrounds/castle_mid.png",
+    castle_near: "assets/backgrounds/castle_near.png",
   },
   sounds: {
     // Background music, played on the Music bus (src/audio.js): the menu waltz, one
@@ -254,6 +282,8 @@ export const ASSETS = {
     "bgm-coral": "assets/audio/bgm-coral.wav",
     "bgm-rooftops": "assets/audio/bgm-rooftops.wav",
     "bgm-snow": "assets/audio/bgm-snow.wav",
+    "bgm-garden": "assets/audio/bgm-garden.wav",
+    "bgm-castle": "assets/audio/bgm-castle.wav",
     // Gameplay SFX (spec §3/§4) — synthesized, played via src/sfx.js on the SFX bus so the
     // 🔊 toggle mutes them independently of the music. Swap the files keeping these keys.
     jump: "assets/audio/jump.wav",

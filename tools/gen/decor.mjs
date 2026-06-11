@@ -194,6 +194,126 @@ function paintCrystalBig() {
   return img;
 }
 
+// --- garden (twilight) ---------------------------------------------------------------
+
+// A rose bush: a leafy mound studded with pink blooms.
+function paintRosebush() {
+  const img = newImg(14, 10);
+  const leaf = [58, 102, 64];
+  const bloom = [222, 84, 120];
+  fillDisc(img, 4.5, 7, 3.6, leaf);
+  fillDisc(img, 9.5, 7, 4, leaf);
+  fillDisc(img, 7, 5.5, 3.4, lighten(leaf, 1.15));
+  pset(img, 4, 4, bloom); // blooms
+  pset(img, 8, 3, bloom);
+  pset(img, 11, 6, bloom);
+  pset(img, 6, 7, darken(bloom, 0.85));
+  pset(img, 8, 3, lighten(bloom, 1.2));
+  outline(img, OUT);
+  return img;
+}
+
+// An ivy arch: two leafy pillars meeting in a crown — frames a path, 2 tiles tall.
+function paintIvyArch() {
+  const img = newImg(24, 26);
+  const stone = [150, 142, 158];
+  const ivy = [62, 110, 70];
+  const bloom = [222, 84, 120];
+  for (const x of [2, 19]) {
+    fillRect(img, x, 6, x + 3, 26, stone); // pillars
+    fillRect(img, x + 2, 6, x + 3, 26, darken(stone, 0.82));
+  }
+  fillTrap(img, 0, 6, 11.5, 7, 11.5, stone); // arch crown
+  fillTrap(img, 1, 5, 11.5, 5, 8, darken(stone, 0.9));
+  // Ivy climbing the left pillar and spilling over the crown.
+  for (const [x, y] of [[2, 22], [3, 18], [2, 14], [4, 10], [6, 4], [10, 2], [14, 2], [18, 5], [20, 12]]) {
+    fillRect(img, x, y, x + 2, y + 2, ivy);
+  }
+  pset(img, 7, 3, bloom); // climbing roses
+  pset(img, 15, 2, bloom);
+  pset(img, 20, 13, bloom);
+  outline(img, OUT);
+  return img;
+}
+
+// A small garden fountain: a basin with a jet and a lit rim.
+function paintFountain() {
+  const img = newImg(20, 16);
+  const stone = [150, 142, 158];
+  const water = [120, 190, 215];
+  fillTrap(img, 11, 16, 10, 8, 9.5, stone); // basin
+  fillRect(img, 3, 10, 17, 12, darken(stone, 0.85)); // basin rim
+  fillRect(img, 4, 10, 16, 11, water); // pooled water
+  fillRect(img, 9, 3, 11, 10, stone); // column
+  fillRect(img, 9, 2, 11, 4, water); // jet crown
+  pset(img, 8, 1, water);
+  pset(img, 12, 1, water);
+  pset(img, 7, 3, lighten(water, 1.2)); // falling droplets
+  pset(img, 13, 4, lighten(water, 1.2));
+  pset(img, 5, 10, [255, 255, 255]); // sparkle on the pool
+  outline(img, OUT);
+  return img;
+}
+
+// --- castle (interior) -----------------------------------------------------------------
+
+// A standing candelabra: three warm flames on golden arms, 1.5 tiles tall.
+function paintCandelabra() {
+  const img = newImg(10, 22);
+  const gold = [196, 158, 64];
+  const flame = [255, 196, 90];
+  fillRect(img, 4, 6, 6, 20, gold); // shaft
+  fillRect(img, 2, 20, 8, 22, darken(gold, 0.8)); // base
+  fillRect(img, 1, 8, 9, 9, gold); // arm bar
+  for (const x of [1, 4, 7]) {
+    fillRect(img, x, 6, x + 2, 8, darken(gold, 0.85)); // cups
+    pset(img, x + 1, 4, flame); // flames
+    pset(img, x + 1, 3, lighten(flame, 1.25));
+  }
+  outline(img, OUT);
+  return img;
+}
+
+// A suit of armour on a plinth — the silent castle guard, 2 tiles tall.
+function paintArmor() {
+  const img = newImg(12, 20);
+  const steel = [168, 174, 192];
+  const dark = darken(steel, 0.78);
+  fillRect(img, 2, 17, 10, 20, [110, 100, 120]); // plinth
+  fillRect(img, 4, 3, 8, 6, steel); // helmet
+  fillRect(img, 4, 5, 8, 6, dark); // visor slit
+  pset(img, 5, 1, [196, 60, 70]); // plume
+  pset(img, 6, 0, [196, 60, 70]);
+  fillRect(img, 3, 7, 9, 12, steel); // cuirass
+  fillRect(img, 3, 10, 9, 12, dark);
+  fillRect(img, 2, 7, 3, 11, dark); // pauldron edges
+  fillRect(img, 9, 7, 10, 11, dark);
+  fillRect(img, 4, 12, 6, 17, steel); // legs
+  fillRect(img, 7, 12, 9, 17, dark);
+  fillRect(img, 1, 6, 2, 16, [140, 120, 90]); // halberd shaft
+  fillTrap(img, 3, 6, 1.5, 0.5, 1.5, steel); // halberd head
+  outline(img, OUT);
+  return img;
+}
+
+// A royal wall banner: bordeaux drape with the gold crown emblem, swallow-tailed.
+function paintRoyalBanner() {
+  const img = newImg(12, 20);
+  const cloth = [150, 44, 64];
+  const gold = [218, 178, 70];
+  fillRect(img, 1, 0, 11, 2, gold); // hanging rod
+  fillRect(img, 2, 2, 10, 15, cloth);
+  fillRect(img, 8, 2, 10, 15, darken(cloth, 0.85)); // shaded fold
+  fillTrap(img, 15, 19, 4, 1.5, 0.2, cloth); // swallow tails
+  fillTrap(img, 15, 19, 8, 1.5, 0.2, cloth);
+  fillRect(img, 4, 6, 8, 8, gold); // crown emblem
+  pset(img, 4, 5, gold);
+  pset(img, 6, 5, gold);
+  pset(img, 8, 5, gold);
+  outline(img, OUT);
+  return img;
+}
+
 // --- export ------------------------------------------------------------------------
 
 // Files emitted by tools/gen/index.mjs; keys must match ASSETS.sprites in src/config.js
@@ -211,4 +331,10 @@ export const DECOR = [
   ["deco_pine.png", paintPine],
   ["deco_snowdrift.png", paintSnowdrift],
   ["deco_crystal_big.png", paintCrystalBig],
+  ["deco_rosebush.png", paintRosebush],
+  ["deco_ivyarch.png", paintIvyArch],
+  ["deco_fountain.png", paintFountain],
+  ["deco_candelabra.png", paintCandelabra],
+  ["deco_armor.png", paintArmor],
+  ["deco_royalbanner.png", paintRoyalBanner],
 ];

@@ -27,7 +27,7 @@ export const ANIMS = {
 // Sprite keys loaded as animated sheets (everything else stays a single image).
 export const ANIMATED_SPRITES = [
   "anna", "sognatrice", "avventuriera",
-  "skirt", "bodice", "necklace", "crown",
+  "skirt", "bodice", "necklace", "crown", "gloves", "cape",
 ];
 
 // World sprites with their own little loops (horizontal strips; cell size = the sprite's
@@ -38,6 +38,8 @@ export const WORLD_SHEETS = {
   pearl: { sliceX: 6, anims: { spin: { from: 0, to: 5, speed: 9, loop: true } } },
   lantern: { sliceX: 6, anims: { spin: { from: 0, to: 5, speed: 9, loop: true } } },
   crystal: { sliceX: 6, anims: { spin: { from: 0, to: 5, speed: 9, loop: true } } },
+  rose: { sliceX: 6, anims: { spin: { from: 0, to: 5, speed: 9, loop: true } } },
+  goblet: { sliceX: 6, anims: { spin: { from: 0, to: 5, speed: 9, loop: true } } },
   crab: { sliceX: 6, anims: { walk: { from: 0, to: 5, speed: 12, loop: true } } },
   flyer: { sliceX: 6, anims: { fly: { from: 0, to: 5, speed: 15, loop: true } } },
   portal: { sliceX: 4, anims: { shimmer: { from: 0, to: 3, speed: 5, loop: true } } },

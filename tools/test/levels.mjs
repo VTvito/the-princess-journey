@@ -1,6 +1,6 @@
 // Per-level visual + smoke check for The Princess Journey.
 //
-// Boots each playable level (1–4) in the installed Edge via playwright-core, asserts it
+// Boots each playable level (1–6) in the installed Edge via playwright-core, asserts it
 // renders with no console/page errors and that the world actually built (a goal + the
 // collectibles exist), and writes a screenshot per level to tools/test/level{N}.png so the
 // themed art — parallax ridges, ambient particles (bubbles / embers / snow), and the
@@ -21,7 +21,7 @@ import { dirname, join } from "node:path";
 const TARGET = process.argv[2] || process.env.PJ_URL || "http://localhost:8137";
 const HERE = dirname(fileURLToPath(import.meta.url));
 const TIMEOUT = 15000;
-const LEVELS = [1, 2, 3, 4];
+const LEVELS = [1, 2, 3, 4, 5, 6];
 
 const allErrors = [];
 let failed = false;
@@ -82,7 +82,7 @@ try {
   }
 
   if (failed) throw new Error("one or more levels failed");
-  console.log("\nAll 4 levels booted cleanly.");
+  console.log(`\nAll ${LEVELS.length} levels booted cleanly.`);
 } catch (err) {
   console.error(`\nFAIL — ${err.message}`);
   console.error(`       (is the server up? run: python tools/serve.py 8137)`);

@@ -277,6 +277,69 @@ export function buildSnowMusic() {
   });
 }
 
+// Garden: a waltz prelude (3/4) — it hints at the finale ballroom waltz from afar,
+// dreamier and in minor, so the last two chapters feel like an approach. ~24s.
+export function buildGardenMusic() {
+  const lead = [
+    ["A4", 2], ["C5", 1], ["E5", 2], ["D5", 1], ["C5", 3],
+    ["B4", 2], ["D5", 1], ["C5", 2], ["A4", 1], ["E4", 3],
+    ["A4", 2], ["C5", 1], ["E5", 2], ["G5", 1], ["F5", 3],
+    ["E5", 2], ["C5", 1], ["B4", 2], ["D5", 1], ["A4", 6],
+  ];
+  const harmony = [
+    [null, 3], ["A4", 3], [null, 3], ["E4", 3],
+    [null, 3], ["C5", 3], [null, 3], ["A4", 3],
+    [null, 1], ["E5", 1], [null, 1], ["C5", 3], [null, 6],
+  ];
+  const bass = [
+    ...rep(2, [["A2", 1], ["E3", 1], ["C3", 1]]), ...rep(2, [["G2", 1], ["D3", 1], ["B2", 1]]),
+    ...rep(2, [["A2", 1], ["E3", 1], ["C3", 1]]), ...rep(2, [["F2", 1], ["C3", 1], ["A2", 1]]),
+    ...rep(2, [["A2", 1], ["E3", 1], ["C3", 1]]), ["E2", 1], ["B2", 1], ["G#3", 1], ["A2", 6],
+  ];
+  return song({
+    bpm: 126,
+    tracks: [
+      { notes: lead, wave: "tri", vol: 0.4, decay: 2 },
+      { notes: harmony, wave: "sine", vol: 0.16, decay: 3 },
+      { notes: bass, wave: "sine", vol: 0.28, decay: 1.4 },
+    ],
+    air: 0.3,
+    peak: 0.56,
+  });
+}
+
+// Castle: a stately processional (4/4) — square fanfare over a walking bass and a slow
+// ceremonial drum, the most regal track before the ball. ~25s.
+export function buildCastleMusic() {
+  const lead = [
+    ["D4", 1.5], ["D4", 0.5], ["F4", 1], ["A4", 1], ["D5", 2], ["C5", 1], ["A4", 1],
+    ["A#4", 1.5], ["A#4", 0.5], ["A4", 1], ["G4", 1], ["A4", 4],
+    ["D5", 1.5], ["D5", 0.5], ["E5", 1], ["F5", 1], ["E5", 2], ["C5", 1], ["A4", 1],
+    ["A#4", 1], ["A4", 1], ["G4", 1], ["E4", 1], ["D4", 4],
+  ];
+  const harmony = [
+    ["F3", 4], ["G3", 4], ["F3", 2], ["E3", 2], ["F3", 4],
+    ["F3", 4], ["A3", 4], ["G3", 2], ["C#4", 2], ["D4", 4],
+  ];
+  const bass = [
+    ["D2", 2], ["D3", 2], ["A#2", 2], ["A2", 2], ["G2", 2], ["G3", 2], ["A2", 2], ["A2", 2],
+    ["D2", 2], ["D3", 2], ["A#2", 2], ["C3", 2], ["G2", 2], ["A2", 2], ["D2", 4],
+  ];
+  return song({
+    bpm: 100,
+    tracks: [
+      { notes: lead, wave: "square", vol: 0.13, decay: 1.8 },
+      { notes: lead, wave: "tri", vol: 0.3, decay: 1.8 },
+      { notes: harmony, wave: "sine", vol: 0.18, decay: 0.8 },
+      { notes: bass, wave: "tri", vol: 0.26, decay: 0.9 },
+    ],
+    perc: rep(8, "k...s...").join(""),
+    percVol: 0.6,
+    air: 0.32,
+    peak: 0.56,
+  });
+}
+
 export const SONGS = {
   "menu-bgm": buildMenuMusic,
   "finale-bgm": buildFinaleMusic,
@@ -284,6 +347,8 @@ export const SONGS = {
   "bgm-coral": buildCoralMusic,
   "bgm-rooftops": buildRooftopsMusic,
   "bgm-snow": buildSnowMusic,
+  "bgm-garden": buildGardenMusic,
+  "bgm-castle": buildCastleMusic,
 };
 
 // --- gameplay SFX --------------------------------------------------------------------------

@@ -241,6 +241,34 @@ export function paintLantern() {
   return img;
 }
 
+export function paintRose() {
+  const img = newImg(C, C);
+  const petal = [222, 84, 120];
+  const leaf = [96, 148, 80];
+  fillRect(img, 5, 6, 7, 11, [88, 124, 66]); // stem
+  pset(img, 4, 8, leaf); // leaves
+  pset(img, 3, 9, leaf);
+  pset(img, 7, 9, leaf);
+  fillDisc(img, 5.5, 4, 3.2, petal); // bloom
+  fillDisc(img, 6.5, 5, 2, darken(petal, 0.8)); // inner shadow petal
+  fillDisc(img, 5, 3.5, 1.4, lighten(petal, 1.3)); // lit outer petal
+  pset(img, 6, 4, darken(petal, 0.7)); // tight centre
+  outline(img, OUT);
+  return img;
+}
+
+export function paintGoblet() {
+  const img = newImg(C, C);
+  const gold = [218, 178, 70];
+  fillTrap(img, 2, 6, 5.5, 3.5, 1, gold); // cup bowl
+  fillRect(img, 5, 6, 7, 9, darken(gold, 0.85)); // stem
+  fillRect(img, 3, 9, 9, 10, gold); // foot
+  fillRect(img, 3, 2, 4, 4, lighten(gold, 1.3)); // sheen down the cup's left
+  pset(img, 6, 3, [180, 60, 80]); // a sip of wine glinting at the rim
+  outline(img, OUT);
+  return img;
+}
+
 export function paintCrystal() {
   const img = newImg(C, C);
   const cyan = [96, 214, 226];

@@ -278,7 +278,7 @@ try {
   );
   check("finale receipt shows debt", amount === "500", `amount=${amount}`);
 
-  // --- §3 Animation contract: the finale avatar wears all four skins, celebrates, and
+  // --- §3 Animation contract: the finale avatar wears all six skins, celebrates, and
   // every skin layer mirrors the body's sheet frame (src/animspec.js sync contract). ---
   const avatarState = await page.evaluate(() => {
     const av = window.__pj.k.get("avatar")[0];
@@ -289,7 +289,7 @@ try {
   check("finale avatar celebrates", avatarState?.anim === "celebrate", `anim=${avatarState?.anim}`);
   check(
     "skin layers frame-synced",
-    avatarState && avatarState.layerFrames.length === 4 &&
+    avatarState && avatarState.layerFrames.length === 6 &&
       avatarState.layerFrames.every((f) => f === avatarState.frame),
     JSON.stringify(avatarState),
   );
