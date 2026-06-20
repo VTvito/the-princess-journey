@@ -147,6 +147,82 @@ try {
   check("player jumps", yGround - yApex > 60, `dy=${(yGround - yApex).toFixed(1)}`);
   check("air anim while jumping", airAnim === "jump", `anim=${airAnim}`);
 
+  // --- Fase 1b Pause: ESC freezes the whole game tree + shows the DOM overlay; a held key
+  // must not move her while frozen; ESC again resumes (proves k.onKeyPress fires while the
+  // tree is paused). A DOM-button safety net unpauses if keyboard-resume ever regresses, so
+  // the rest of the suite always runs unfrozen. ---
+  await page.keyboard.press("Escape");
+  await page
+    .waitForFunction(
+      () => !document.getElementById("pause-overlay").hidden && window.__pj.k.getTreeRoot().paused,
+      null,
+      { timeout: 4000, polling: 50 },
+    )
+    .catch(() => {});
+  const pausedState = await page.evaluate(() => ({
+    overlay: !document.getElementById("pause-overlay").hidden,
+    frozen: window.__pj.k.getTreeRoot().paused,
+  }));
+  check("ESC pauses + freezes", pausedState.overlay && pausedState.frozen, JSON.stringify(pausedState));
+
+  const xPaused0 = await px();
+  await page.keyboard.down("ArrowRight");
+  await page.waitForTimeout(200);
+  await page.keyboard.up("ArrowRight");
+  const xPaused1 = await px();
+  check("frozen world ignores input", Math.abs(xPaused1 - xPaused0) < 1, `dx=${(xPaused1 - xPaused0).toFixed(2)}`);
+
+  await page.keyboard.press("Escape");
+  await page
+    .waitForFunction(
+      () => document.getElementById("pause-overlay").hidden && !window.__pj.k.getTreeRoot().paused,
+      null,
+      { timeout: 4000, polling: 50 },
+    )
+    .catch(() => {});
+  const resumedState = await page.evaluate(() => ({
+    overlay: document.getElementById("pause-overlay").hidden,
+    running: !window.__pj.k.getTreeRoot().paused,
+  }));
+  check("ESC resumes (key works while paused)", resumedState.overlay && resumedState.running, JSON.stringify(resumedState));
+  // Safety net + refocus so later probes run on an unfrozen, focused canvas no matter what.
+  if (await page.evaluate(() => window.__pj.k.getTreeRoot().paused)) await page.click("#pause-resume");
+  await page.mouse.click(640, 360);
+  await page.waitForTimeout(50);
+
+  // --- Fase 1c Settings: reachable from pause; a slider writes through to localStorage
+  // (the audio bus). Closing it reveals the pause card again. ---
+  await page.keyboard.press("Escape"); // pause
+  await page.waitForFunction(() => !document.getElementById("pause-overlay").hidden, null, { timeout: 4000, polling: 50 }).catch(() => {});
+  await page.click("#pause-settings");
+  await page.waitForFunction(() => !document.getElementById("settings-overlay").hidden, null, { timeout: 4000, polling: 50 }).catch(() => {});
+  const settingsOpened = await page.evaluate(() => !document.getElementById("settings-overlay").hidden);
+  check("settings opens from pause", settingsOpened);
+  await page.evaluate(() => {
+    const s = document.getElementById("set-music-vol");
+    s.value = "30";
+    s.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const musicVolLs = await page.evaluate(() => localStorage.getItem("pj.musicVol"));
+  check("music slider persists volume", Math.abs(parseFloat(musicVolLs) - 0.3) < 0.02, `pj.musicVol=${musicVolLs}`);
+  await page.click("#settings-close");
+  await page
+    .waitForFunction(
+      () => document.getElementById("settings-overlay").hidden && !document.getElementById("pause-overlay").hidden,
+      null,
+      { timeout: 4000, polling: 50 },
+    )
+    .catch(() => {});
+  const backToPause = await page.evaluate(() => ({
+    settings: document.getElementById("settings-overlay").hidden,
+    pause: !document.getElementById("pause-overlay").hidden,
+  }));
+  check("settings closes back to pause", backToPause.settings && backToPause.pause, JSON.stringify(backToPause));
+  await page.click("#pause-resume"); // unfreeze for the rest of the suite (focus is off-canvas)
+  await page.waitForFunction(() => !window.__pj.k.getTreeRoot().paused, null, { timeout: 4000, polling: 50 }).catch(() => {});
+  await page.mouse.click(640, 360);
+  await page.waitForTimeout(50);
+
   // --- Mario-style stomp + hit-stop: drop the heroine onto a crab; the enemy must die
   // and debug.timeScale must come back to 1 (a stranded hit-stop would slow-motion the
   // whole game). This is a feature probe, not bot play, so teleporting is fair game. ---
@@ -266,6 +342,66 @@ try {
     return { ok: reformed, why: reformed ? "fell + reformed" : `stuck in ${plat.state}` };
   });
   check("crumble platform falls and reforms", crumble.ok, crumble.why);
+
+  // --- Fase 2 Feather (Livello 5): grabbing it boosts the player's jump force (jumpMul). ---
+  await page.evaluate(() => localStorage.setItem("pj.currentLevel", "5"));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => window.__pj?.k && window.__pj.k.getSceneName() === "menu", null, { timeout: T, polling: 100 });
+  await page.evaluate(() => window.__pj.k.go("game"));
+  await page.waitForFunction(
+    () => window.__pj.k.getSceneName() === "game" && window.__pj.k.get("player").length > 0 && window.__pj.k.get("feather").length > 0,
+    null,
+    { timeout: T, polling: 100 },
+  );
+  const feather = await page.evaluate(async () => {
+    const k = window.__pj.k;
+    const p = k.get("player")[0];
+    const f = k.get("feather")[0];
+    if (!f) return { ok: false, why: "no feather on level 5" };
+    p.pos.x = f.pos.x;
+    p.pos.y = f.pos.y; // overlap → pickup
+    await new Promise((r) => setTimeout(r, 250));
+    return { ok: Math.abs(p.jumpMul - 1.4) < 0.001, jumpMul: p.jumpMul };
+  });
+  check("feather grants high-jump", feather.ok, feather.why || `jumpMul=${feather.jumpMul}`);
+
+  // --- Fase 2 Armored swooper (Livello 6): a 2-hp diving guard — survives + enrages on the
+  // first stomp, falls on the second. (The Gargoyle is hp 3, so target hp===2 specifically.) ---
+  await page.evaluate(() => localStorage.setItem("pj.currentLevel", "6"));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForFunction(() => window.__pj?.k && window.__pj.k.getSceneName() === "menu", null, { timeout: T, polling: 100 });
+  await page.evaluate(() => window.__pj.k.go("game"));
+  await page.waitForFunction(
+    () => window.__pj.k.getSceneName() === "game" && window.__pj.k.get("player").length > 0,
+    null,
+    { timeout: T, polling: 100 },
+  );
+  await page.mouse.click(640, 360);
+  await page.waitForTimeout(50);
+  const armored = await page.evaluate(async () => {
+    const k = window.__pj.k;
+    const p = k.get("player")[0];
+    const e = k.get("enemy").find((x) => x.hp === 2);
+    if (!e) return { ok: false, why: "no armored (hp=2) enemy on level 6" };
+    const t0 = e.swoopTime;
+    p.pos.x = e.pos.x;
+    p.pos.y = e.pos.y - 90;
+    p.vel.y = 200; // fall onto it → stomp
+    await new Promise((r) => setTimeout(r, 350));
+    const survived = e.exists() && e.hp === 1;
+    const enraged = e.swoopTime < t0;
+    let killed = false;
+    if (e.exists()) {
+      p.pos.x = e.pos.x;
+      p.pos.y = e.pos.y - 90;
+      p.vel.y = 200;
+      await new Promise((r) => setTimeout(r, 450));
+      killed = !e.exists();
+    }
+    return { ok: survived && killed, survived, enraged, killed };
+  });
+  check("armored swooper takes two stomps", armored.ok, armored.why || JSON.stringify(armored));
+  check("armored swooper enrages when wounded", !!armored.enraged, JSON.stringify(armored));
 
   // --- §2 Finale receipt: shows the running debt ---
   await page.evaluate(() => window.__pj.k.go("finale"));

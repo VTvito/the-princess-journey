@@ -114,6 +114,12 @@ export const LEVEL_3 = {
       { x: 54, y: 5, ch: "o" },
       { x: 58, y: 5, ch: "o" },
       { x: 62, y: 5, ch: "o" },
+      // REMIX (Fase 2): a feather on the ridgeline lifts her to a high lantern pair the
+      // normal jump can't reach — claimed under the dives of the ridgeline's own ghost.
+      // Off the critical path (the ridgeline is bot-invisible) → reachability unaffected.
+      { x: 56, y: 5, ch: "+" },
+      { x: 52, y: 2, ch: "o" },
+      { x: 60, y: 2, ch: "o" },
       // Bonus lanterns: the high ridge route pays out for keeping your nerve.
       { x: 90, y: 7, ch: "o" },
       { x: 92, y: 7, ch: "o" },

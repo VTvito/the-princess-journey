@@ -8,3 +8,7 @@ package.json
 package-lock.json
 .gitattributes
 pjrealplatformerfeel.bundle
+
+# Secrets must never be uploaded to the deployment (this is a denylist).
+.env
+.env.*

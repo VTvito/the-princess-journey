@@ -32,6 +32,8 @@ import { makePlayer } from "../entities/player.js";
 import { getLevelDef, hasLevel } from "../levels/index.js";
 import { buildLevel } from "../levels/build.js";
 import { showInsertCoin, hideInsertCoin } from "../ui/insertCoin.js";
+import { showPause, hidePause } from "../ui/pauseMenu.js";
+import { showSettings, hideSettings } from "../ui/settings.js";
 import { hideReceipt } from "../ui/receipt.js";
 import { fadeToScene } from "../ui/transition.js";
 import { confettiBurst, dustPuff, hitStop, screenShake } from "../juice.js";
@@ -60,9 +62,16 @@ let respawningFromDeath = false;
 
 export function registerGameScene() {
   k.scene("game", () => {
-    // Defensive: clear any DOM overlay left over from another scene.
+    // Defensive: clear any DOM overlay left over from another scene, and make sure the
+    // world is running (a previous pause always unfreezes before leaving, but re-entry
+    // resets it too so a stale pause can never carry over).
     hideInsertCoin();
     hideReceipt();
+    hidePause();
+    hideSettings();
+    k.getTreeRoot().paused = false;
+    // Reveal the on-screen touch controls (CSS shows them only while body.playing).
+    document.body.classList.add("playing");
 
     // Dev autoplay hook (tools/test/play.mjs): reset the per-level goal flag on entry.
     // `deaths` is cumulative across retries (the bot zeroes it before a run). No-op off
@@ -136,6 +145,9 @@ export function registerGameScene() {
     // enemy defeats it. A fall off the world still ends the run (handled in die's callers).
     let invincibleUntil = 0;
     const isInvincible = () => k.time() < invincibleUntil;
+    // Feather power-up: a short high-jump window (boosts the player's jump force).
+    let featherUntil = 0;
+    const hasFeather = () => k.time() < featherUntil;
     function die() {
       if (finished || dead) return;
       dead = true;
@@ -180,7 +192,9 @@ export function registerGameScene() {
           if (enemy.art) {
             enemy.art.color = k.rgb(255, 120, 120); // wound flash
             k.wait(0.18, () => {
-              if (enemy.exists() && enemy.art) enemy.art.color = k.rgb(150, 150, 170);
+              // Reset to the enemy's own base tint (stone for the Gargoyle, iron for the
+              // armored swooper), not a hard-coded grey.
+              if (enemy.exists() && enemy.art) enemy.art.color = enemy.baseTint ?? k.rgb(150, 150, 170);
             });
           }
           bumpScore(SCORE.STOMP);
@@ -263,18 +277,54 @@ export function registerGameScene() {
       });
     }
 
+    // Feather power-up: grant a high-jump window + points, with a cool aura trailing her.
+    // Re-grabbing simply refreshes the timer. Placed off the critical path, so the autoplay
+    // bot never picks one up and jumpMul stays 1 for it.
+    player.onCollide("feather", (f) => {
+      if (finished || dead) return;
+      confettiBurst(f.pos, [PALETTE.cream, theme.collectibleGlow || PALETTE.gold, [200, 224, 248]]);
+      sfx("spring"); // a lift-y chirp fits the high-jump
+      k.destroy(f);
+      featherUntil = k.time() + POWERUP.FEATHER_DURATION;
+      player.jumpMul = POWERUP.FEATHER_JUMP_MUL;
+      bumpScore(SCORE.POWERUP);
+      spawnFeatherAura();
+    });
+    // The cool aura that trails the heroine while the feather is active (one at a time).
+    function spawnFeatherAura() {
+      if (k.get("feather-aura").length) return; // already showing; the timer was just refreshed
+      const aura = k.add([
+        k.circle(30),
+        k.pos(player.pos),
+        k.anchor("center"),
+        k.color(190, 215, 245),
+        k.opacity(0),
+        k.z(9),
+        "feather-aura",
+      ]);
+      aura.onUpdate(() => {
+        if (!hasFeather()) return k.destroy(aura);
+        aura.pos = player.pos;
+        const pulse = 0.5 + 0.5 * Math.sin(k.time() * 8);
+        aura.opacity = 0.12 + 0.16 * pulse;
+        aura.radius = 26 + 6 * pulse;
+      });
+    }
+
     // --- HUD (fixed; ignores the camera) ---
-    k.add([k.text(char.name, { size: 28 }), k.pos(24, 18), k.color(...hudColor), k.fixed(), k.z(50)]);
+    // x=88 leaves room for the top-left pause button (54px circle at left:16).
+    k.add([k.text(char.name, { size: 28 }), k.pos(88, 18), k.color(...hudColor), k.fixed(), k.z(50)]);
     k.add([
       k.text(def.name, { size: 20 }),
-      k.pos(24, 52),
+      k.pos(88, 52),
       k.color(...hudColor),
       k.opacity(0.85),
       k.fixed(),
       k.z(50),
     ]);
     const itemLabel = k.add([
-      k.text(`${icon} 0/${collectiblesTotal}`, { size: 26 }),
+      // sans-serif: the label leads with the theme's collectible emoji, which the pixel font lacks.
+      k.text(`${icon} 0/${collectiblesTotal}`, { size: 26, font: "sans-serif" }),
       k.pos(GAME_W - 24, 18),
       k.anchor("topright"),
       k.color(...PALETTE.gold),
@@ -283,7 +333,8 @@ export function registerGameScene() {
     ]);
     // Running journey score (Mario-style): pickups + stomps. Persists across levels.
     const scoreLabel = k.add([
-      k.text(`★ ${getScore()}`, { size: 22 }),
+      // sans-serif: the ★ glyph isn't in the pixel font.
+      k.text(`★ ${getScore()}`, { size: 22, font: "sans-serif" }),
       k.pos(GAME_W - 24, 54),
       k.anchor("topright"),
       k.color(...hudColor),
@@ -296,7 +347,8 @@ export function registerGameScene() {
     };
     // Invincibility indicator (top centre): shown only while a star is active, counting down.
     const invLabel = k.add([
-      k.text("", { size: 24 }),
+      // sans-serif: shows "★ INVINCIBILE …" and the ★ glyph isn't in the pixel font.
+      k.text("", { size: 24, font: "sans-serif" }),
       k.pos(GAME_W / 2, 30),
       k.anchor("center"),
       k.color(...PALETTE.gold),
@@ -304,10 +356,24 @@ export function registerGameScene() {
       k.z(50),
     ]);
     invLabel.hidden = true;
+    // Feather indicator (just below the star one; "PIUMA" has no special glyph → pixel font).
+    const featherLabel = k.add([
+      k.text("", { size: 24 }),
+      k.pos(GAME_W / 2, 60),
+      k.anchor("center"),
+      k.color(190, 215, 245),
+      k.fixed(),
+      k.z(50),
+    ]);
+    featherLabel.hidden = true;
     k.onUpdate(() => {
       const active = isInvincible();
       invLabel.hidden = !active;
       if (active) invLabel.text = `★ INVINCIBILE  ${Math.ceil(invincibleUntil - k.time())}`;
+      const feather = hasFeather();
+      featherLabel.hidden = !feather;
+      if (feather) featherLabel.text = `PIUMA  ${Math.ceil(featherUntil - k.time())}`;
+      else if (player.jumpMul !== 1) player.jumpMul = 1; // high-jump lapsed → back to normal
     });
 
     // --- Collectibles (golden apples / pearls) ---
@@ -370,16 +436,56 @@ export function registerGameScene() {
       if (banner.opacity <= 0) k.destroy(banner);
     });
 
-    // Back to the menu (ESC). No full-screen tap handler, so it doesn't fight the
-    // on-screen controls during play.
-    k.onKeyPress("escape", () => fadeToScene(() => k.go("menu")));
+    // --- Pause (ESC or the top-left button) ---
+    // Freezes the whole game tree (k.getTreeRoot().paused) and shows a DOM overlay whose
+    // buttons stay clickable while everything else is frozen. Every exit unfreezes first so
+    // a paused tree can never leak into the next scene.
+    let paused = false;
+    const setFrozen = (on) => {
+      paused = on;
+      k.getTreeRoot().paused = on;
+    };
+    function pauseGame() {
+      if (finished || dead || paused) return;
+      setFrozen(true);
+      resetInput(); // drop any held direction so she doesn't drift on resume
+      showPause({
+        onResume: resumeGame,
+        // Settings stacks over the pause card; the world stays frozen and the pause card
+        // reappears when settings closes.
+        onSettings: () => showSettings(),
+        onRestart: () => {
+          hidePause();
+          setFrozen(false);
+          respawningFromDeath = false; // full restart from the level's start, not a checkpoint
+          fadeToScene(() => k.go("game"));
+        },
+        onMenu: () => {
+          hidePause();
+          setFrozen(false);
+          fadeToScene(() => k.go("menu"));
+        },
+      });
+    }
+    function resumeGame() {
+      if (!paused) return;
+      hidePause();
+      setFrozen(false);
+      focusCanvas(); // clicking the DOM button took focus; give it back for the keys
+    }
+    k.onKeyPress("escape", () => (paused ? resumeGame() : pauseGame()));
+    // The on-screen pause button (DOM). Reassigned each scene entry; the button is only
+    // visible during gameplay (body.playing), so a stale closure can't be reached elsewhere.
+    const pauseBtn = document.getElementById("pause-toggle");
+    if (pauseBtn) pauseBtn.onclick = () => (paused ? resumeGame() : pauseGame());
   });
 }
 
 // --- Themed backdrop (spec §2): three generated parallax image layers per theme (sky / mid /
 // near) plus the signature ambient particles. The static silhouette polygons were replaced by
-// the mid/near images; the particle systems (motes / bubbles / snow) are kept as juice. ---
-function drawBackground(theme) {
+// the mid/near images; the particle systems (motes / bubbles / snow) are kept as juice.
+// Exported so the menu can reuse the same living backdrop (src/scenes/menu.js). ---
+export function drawBackground(theme) {
   const decor = theme.decor; // "forest" | "coral" | "rooftops" | "snow" → background key prefix
   // Sky: a full-screen (1280×720) gradient image, screen-fixed behind everything.
   k.add([k.sprite(`${decor}_sky`), k.pos(0, 0), k.fixed(), k.z(-100)]);
@@ -541,7 +647,7 @@ function showReward(reward, got, total, icon, nextLevel) {
       k.z(81),
     ]);
     k.add([
-      k.text(`✨ ${reward.name} ✨`, { size: 38 }),
+      k.text(reward.name, { size: 38 }),
       k.pos(GAME_W / 2, GAME_H / 2 + 2),
       k.anchor("center"),
       k.color(...PALETTE.gold),
@@ -550,7 +656,8 @@ function showReward(reward, got, total, icon, nextLevel) {
     ]);
   }
   k.add([
-    k.text(`${icon} ${got}/${total}    ★ ${getScore()}`, { size: 26 }),
+    // sans-serif: contains the collectible emoji + ★, neither of which the pixel font has.
+    k.text(`${icon} ${got}/${total}    ★ ${getScore()}`, { size: 26, font: "sans-serif" }),
     k.pos(GAME_W / 2, GAME_H / 2 + 56),
     k.anchor("center"),
     k.color(...PALETTE.cream),
@@ -563,7 +670,7 @@ function showReward(reward, got, total, icon, nextLevel) {
   // or — defensively — back to the menu.
   const more = hasLevel(nextLevel);
   const toFinale = !more && nextLevel >= MAX_LEVEL;
-  const label = more ? "Continua  ▶" : toFinale ? "Al Gran Ballo  ▶" : "Torna al menu";
+  const label = more ? "Continua" : toFinale ? "Al Gran Ballo" : "Torna al menu";
   const dest = more ? "game" : toFinale ? "finale" : "menu";
 
   const btn = k.add([

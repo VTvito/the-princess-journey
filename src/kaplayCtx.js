@@ -20,6 +20,10 @@ export const k = kaplay({
   touchToMouse: true,      // taps fire onClick — menu works on mobile
   pixelDensity: Math.min(window.devicePixelRatio || 1, 2), // crisp but cap for perf
   crisp: true, // nearest-neighbour sampling so the generated 64px tiles/sprites stay sharp
-  // Default font that ships with Kaplay; swap for a custom font in a later prompt.
-  font: "sans-serif",
+  // Default UI font: the vendored pixel font (loaded in src/assets.js as "pixel"). Every
+  // k.text() inherits it, so the HUD/menus read as pixel art instead of system sans-serif.
+  // The few labels with emoji/symbol glyphs the font lacks (▶ ★ ✨ 👑) override to
+  // font:"sans-serif" per object. Until the async load finishes (the loading scene), Kaplay
+  // falls back to its built-in font for the brief "Caricamento..." text.
+  font: "pixel",
 });

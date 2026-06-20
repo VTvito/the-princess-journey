@@ -1,11 +1,11 @@
 # 👑 The Princess Journey
 
 A personalized 2D platformer gift, built with [Kaplay](https://kaplayjs.com/)
-(`3001.0.19`, loaded from a CDN — no build step). See
-`Specifiche_Gioco_Anna_Princess.md` for the full design.
+(`3001.0.19`, **vendored** at `vendor/kaplay-3001.0.19.mjs` and imported directly — no build
+step, no CDN at runtime). See `Specifiche_Gioco_Anna_Princess.md` for the original design.
 
 The full journey is playable: a responsive landscape canvas, a main menu with character
-selection (Anna / La Sognatrice / L'Avventuriera), four themed platformer levels with a
+selection (Anna / La Sognatrice / L'Avventuriera), **six** themed platformer levels with a
 clothing-skin progression, and the **Sala da Ballo** finale — all with `localStorage`
 progress.
 
@@ -15,16 +15,48 @@ ES modules require an HTTP server — opening `index.html` by double-click (`fil
 will **not** work. Use the bundled dev server:
 
 ```bash
-python tools/serve.py 8080
+python tools/serve.py 8137      # or: npm run serve   (skill: /serve-game)
 ```
 
-Then open <http://localhost:8080> and play. On mobile, hold the device in **landscape**.
+Then open <http://localhost:8137> and play. On mobile, hold the device in **landscape**.
 
 > **Why not `python -m http.server`?** On Windows, the built-in server reads MIME types
 > from the registry, which often serves `.js` as `text/plain`. Browsers enforce strict
 > MIME checking for ES modules and silently refuse to run them, so the game won't load.
 > `tools/serve.py` forces the correct `text/javascript` type. (`npx http-server` or the
 > VS Code **Live Server** extension also work.)
+
+## Deploy (Vercel)
+
+The game is a **static site** — no build step (Kaplay is vendored), so Vercel just serves the
+files. The repo ships the config Vercel needs:
+
+- [`vercel.json`](vercel.json) — long-lived `Cache-Control` headers for `/assets/*` and
+  `/vendor/*`.
+- [`.vercelignore`](.vercelignore) — keeps dev tooling (and **`.env`**) out of the deploy;
+  only `index.html`, `style.css`, the manifest, `src/`, `assets/` and `vendor/` are uploaded.
+
+**Live (production):** <https://gameforprincess.vercel.app>
+(team `lion-vi`, project `game_for_princess`).
+
+The project is already linked (a `.vercel/` folder exists locally). Deploy with **one command**:
+
+```bash
+npm run deploy            # production deploy (alias the live URL)
+npm run deploy -- --preview   # a throwaway preview deployment instead
+```
+
+`npm run deploy` ([`tools/deploy.mjs`](tools/deploy.mjs)) reads `VERCEL_TOKEN` from a
+**gitignored `.env`** so the token never has to be pasted again:
+
+```bash
+# .env  (LOCAL ONLY — gitignored AND vercelignored; never committed or uploaded)
+VERCEL_TOKEN=...            # from https://vercel.com/account/tokens
+```
+
+The `--scope lion-vi` is required (the token belongs to a team); `tools/deploy.mjs` applies it
+for you. The equivalent raw CLI fallback is
+`npx vercel deploy --prod --scope lion-vi --token "$VERCEL_TOKEN"`.
 
 ## Testing
 
@@ -34,52 +66,85 @@ dependency — the game itself still has no build step). Start the server, then 
 ```bash
 npm install             # once: fetches playwright-core (skips the browser download)
 npm run serve           # terminal 1 — serves http://localhost:8137
-npm test                # terminal 2 — smoke: boots to the menu, no console errors
-npm run test:features   # deeper: audio toggle, SFX load, movement/jump, Insert Coin, receipt
-npm run test:levels     # boots each of levels 1–4, asserts no errors + screenshots the art
-npm run test:play       # autoplay bot drives each level 1–4 to its goal (reachability guard)
+npm test                # terminal 2 — smoke + features + levels
+npm run test:features   # audio buses, SFX load, movement/jump, Insert Coin, finale receipt
+npm run test:levels     # boots each of levels 1–6, asserts no errors + screenshots the art
+npm run test:play       # autoplay bot drives each level 1–6 to its goal (reachability guard)
+npm run test:mobile     # iPhone-landscape emulation: audio unlock, touch controls, fit, hint
 ```
 
-`test:play` is the regression guard for playability: a rule-based bot runs, jumps, and
-waits its way through each level and fails if a goal can't be reached — so a level can't
-silently become unbeatable again.
+`test:play` is the regression guard for playability: a rule-based bot runs, jumps, and waits
+its way through each level and fails if a goal can't be reached. `test:mobile` emulates a
+recent iPhone in landscape and asserts the mobile fixes (see **Mobile / iOS** below).
 
-Each writes a screenshot to `tools/test/`. The tests read a localhost-only dev handle
-(`window.__pj.k`, set in `src/main.js`) to introspect the engine; it's never attached on a
-real deployment.
+> **Flaky checks (known, pre-existing):** a few timing-sampled assertions in `test:features`
+> (`air anim while jumping`, `spring launches the player`) and the autoplay bot on **Livello 3**
+> (and occasionally **Livello 5**, whose breeze glide is timing-luck) can intermittently fail at
+> frame boundaries — they flip pass/fail with identical code, so re-run (`npm run test:play
+> --levels 5`) before treating one as a regression. **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml))
+> parses every module and runs the smoke + per-level boot gates; the feature/autoplay suites run
+> non-blocking for exactly this reason.
+
+Each test writes a screenshot to `tools/test/`. The tests read a localhost-only dev handle
+(`window.__pj.k`, set in `src/main.js`) to introspect/drive the engine; it's never attached on
+a real deployment.
 
 ## Controls
 
-- **Desktop:** ◀ ▶ arrows to move, **Space** or **↑** to jump.
-- **Mobile:** on-screen D-pad (bottom-left) + jump button (bottom-right); they appear
-  only on touch devices.
+- **Desktop:** ◀ ▶ arrows to move, **Space** or **↑** to jump, **Esc** to pause.
+- **Mobile:** a slim **D-pad pill** (bottom-left) + a larger **jump button** (bottom-right),
+  plus a **⏸ pause button** (top-left). They are translucent at rest, gold while pressed,
+  respect the iOS safe area, and appear **only during gameplay** (`body.playing`) — never over
+  the menu or finale.
+- **Pause** (Esc / ⏸) freezes the world and opens an overlay: **Riprendi · Impostazioni ·
+  Ricomincia · Torna al menu**. **Impostazioni** (also on the main menu) has **Musica / Effetti**
+  volume sliders and a two-tap **Cancella i progressi** (wipes the save; the lifetime debt, the
+  joke, survives).
+
+## Mobile / iOS
+
+Landscape, mobile-first. The pieces that make it feel right on a phone:
+
+- **Audio unlock** ([`src/audioUnlock.js`](src/audioUnlock.js)) — iOS Safari starts the
+  `AudioContext` *suspended* and only resumes it inside a **real DOM gesture**. A Kaplay
+  `onClick` runs in the rAF loop (not the gesture), so a window-level capture listener resumes
+  `k.audioCtx` on the first `pointerdown/touchend/…` and then (re)starts the current track via
+  `resumeCurrentBgm()` in [`src/audio.js`](src/audio.js).
+- **Landscape fit** — `html, body` use **`100dvh`** so the canvas tracks the *actually visible*
+  viewport (no clip under the Safari toolbar/status bar); interactive UI uses
+  `env(safe-area-inset-*)` for the notch / home indicator.
+- **Install hint** ([`src/ui/installHint.js`](src/ui/installHint.js)) — iPhone Safari tabs
+  can't go true fullscreen, so a small dismissible "Aggiungi a Home" banner (iOS-only, not in
+  standalone, persisted) nudges PWA install.
+
+> **Test honesty:** Edge/Chromium (`npm run test:mobile`) does **not** emulate WebKit's audio
+> quirks nor the `env(safe-area)` notch insets — confirm the real audio + safe-area on a
+> physical iPhone after deploy.
 
 ## Generated assets
 
 All art and audio are generated by the pixel-art pipeline in `tools/gen/` (Node built-ins
-only, no npm install needed) and committed under `assets/`. Regenerate with:
+only) and committed under `assets/`. Regenerate with:
 
 ```bash
 npm run gen          # = node tools/gen/index.mjs — deterministic, same input → same bytes
 ```
 
-The art is authored at quarter resolution (e.g. heroines 16×24, tiles 16×16) and
-integer-upscaled ×4 to the exact sizes the runtime expects (64×96, 64px tiles, …), giving
-a chunky 16-bit pixel-art look. This writes:
+The art is authored at quarter resolution and integer-upscaled ×4 for a chunky 16-bit look.
+This writes:
 
-- `assets/sprites/{anna,sognatrice,avventuriera}.png` — 64×96 transparent RGBA pixel-art
-  heroines (outlined, 4-tone shading) in each character's palette.
-- `assets/sprites/{skirt,bodice,necklace,crown,logo}.png` — clothing-skin overlays + the
-  crown logo, on the same 64×96 canvas so the layers line up.
-- `assets/sprites/{apple,pearl,lantern,crystal,crab,flyer,portal}.png` — collectibles,
-  enemies and the goal portal.
-- `assets/tilesets/tileset.png` — neutral-grey tile atlas (tinted per theme at runtime):
-  ground tops + variants + edge caps, fills, platform, hazards, grass caps.
-- `assets/backgrounds/{forest,coral,rooftops,snow}_{sky,mid,near}.png` — dithered-band
-  skies + seamlessly wrapping silhouette layers per theme.
-- `assets/audio/{menu-bgm,game-bgm}.wav` — gentle looping music, on the **Music** bus.
-- `assets/audio/{jump,collect,coin,oops,goal,win,select}.wav` — synthesized gameplay SFX,
-  played on the **SFX** bus.
+- `assets/sprites/{anna,sognatrice,avventuriera}.png` — 64×96 heroines.
+- `assets/sprites/{skirt,bodice,necklace,crown,gloves,cape,logo}.png` — the six clothing-skin
+  overlays + the crown logo, on the same 64×96 canvas so the layers line up.
+- `assets/sprites/…` — collectibles, enemies, the goal portal, the Phase-4/5 mechanic props
+  (spring, flag, swooper, roller) and the per-theme decor props.
+- `assets/tilesets/tileset.png` — neutral-grey tile atlas (tinted per theme at runtime).
+- `assets/backgrounds/{forest,coral,rooftops,snow,garden,castle}_{sky,mid,near}.png` —
+  parallax skies + silhouettes per theme.
+- `assets/audio/{menu-bgm,finale-bgm}.wav` + one track per theme
+  `assets/audio/bgm-{forest,coral,rooftops,snow,garden,castle}.wav` — on the **Music** bus.
+- `assets/audio/{jump,collect,coin,oops,goal,win,select,stomp,spring,checkpoint,crumble,skid}.wav`
+  — synthesized gameplay SFX, on the **SFX** bus.
 
 ### Swapping in real assets
 
@@ -90,62 +155,69 @@ file's **extension** changes (e.g. real music as `.mp3`), update the matching pa
 ## Project structure
 
 ```
-index.html              canvas mount + rotate overlay + touch controls + DOM overlays
-style.css               full-viewport canvas, letterbox bars, overlays, touch buttons
-package.json            dev-only: scripts + playwright-core for the test harness
+index.html              canvas mount + rotate overlay + touch controls + install hint + overlays
+style.css               full-viewport canvas (100dvh), letterbox bars, overlays, touch buttons
+sw.js                   service worker: offline play / PWA install (registered in main.js, prod only)
+manifest.webmanifest    PWA manifest (standalone, landscape, icons)
+package.json            dev-only: scripts (serve/test/test:mobile/gen/deploy) + playwright-core
+.env                    LOCAL ONLY (gitignored+vercelignored): VERCEL_TOKEN for `npm run deploy`
+jsconfig.json           JS code-intelligence for the LSP (navigation/hover; checkJs off by default)
+.mcp.json.example       template for the Playwright MCP (rename to .mcp.json to activate)
+vendor/
+  kaplay-3001.0.19.mjs  the pinned, vendored engine (imported by src/kaplayCtx.js)
 src/
-  main.js               entry: registers scenes, loads assets, wires touch + audio buttons
+  main.js               entry: scenes, asset load, touch + audio buttons, audio unlock, install hint
   kaplayCtx.js          creates & exports the single kaplay() context `k`
-  config.js             virtual resolution, palette, CHARACTERS[], PHYSICS, ASSETS
+  config.js             virtual resolution, palette, CHARACTERS[], SKINS[], PHYSICS, MECHANICS, ASSETS
   assets.js             loads sprites/sounds from the ASSETS manifest
-  state.js              localStorage: selectedCharacter, currentLevel, totaleCoccoline
+  state.js              localStorage: selectedCharacter, currentLevel, score, Coccoline
   controls.js           reusable input layer: keyboard + DOM touch buttons
-  juice.js              game-feel helpers (confetti burst) — pure Kaplay, no DOM
+  audio.js              Music + SFX buses: bgm playback + persisted toggles + resumeCurrentBgm()
+  audioUnlock.js        resumes the AudioContext on the first real DOM gesture (iOS Safari)
   sfx.js                one-shot sound effects (k.play wrapper) on the SFX bus
-  audio.js              Music + SFX buses: bgm playback + persisted on/off toggles
+  juice.js / animspec.js game-feel helpers (confetti) + the sprite animation contract
   ui/                   DOM/HTML overlays, isolated from the game's collision logic
-    insertCoin.js       "Insert Coin" death overlay (spec §1)
-    receipt.js          finale "Scontrino" + WhatsApp payoff (spec §2)
-    transition.js       CSS scene-fade helper (spec §4)
-    audioToggle.js      Music + SFX toggle buttons (spec §4)
+    insertCoin.js       "Insert Coin" death overlay
+    pauseMenu.js        pause overlay (Riprendi / Impostazioni / Ricomincia / Menu)
+    settings.js         settings overlay: Musica/Effetti volume sliders + Cancella i progressi
+    receipt.js          finale "Scontrino" + WhatsApp payoff
+    transition.js       CSS scene-fade helper
+    audioToggle.js      Music + SFX toggle buttons
+    audioDebug.js       on-screen WebAudio diagnostics (only with ?audiodebug=1)
+    installHint.js      iOS "Aggiungi a Home" hint (PWA fullscreen)
   entities/
-    player.js           makePlayer(): physics body + movement/jump + squash & stretch
+    player.js           makePlayer(): physics body + movement/jump + squash & stretch + skins
   scenes/
     loading.js          branded loading screen → menu when assets are ready
-    menu.js             title, Start, character cards, audio unlock
-    game.js             plays a level: camera, parallax, Insert-Coin death, apples, goal
-    finale.js           "Sala da Ballo" cutscene: avatar in all skins + message + receipt
+    menu.js             title, Start, character cards, audio unlock gesture
+    game.js             plays a level: camera, parallax, Insert-Coin death, collectibles, goal
+    finale.js           "Sala da Ballo": avatar in all skins + message + (delayed) receipt
   levels/
-    level1.js           "Foresta Incantata" tile map + theme (DATA only)
-    level2.js           "Abissi di Corallo" tile map + theme (DATA only)
-    level3.js           "Tetti d'Oriente" tile map + theme (DATA only)
-    level4.js           "Cime Innevate" tile map + theme (DATA only)
-    build.js            generic builder (solids/hazards/collectibles/crabs/flyers/stalactites/goal)
+    level1.js … level6.js  six tile maps + themes (DATA only)
+    build.js            generic builder (solids/hazards/collectibles/enemies/mechanics/goal)
+    mapkit.js           tile legend + map helpers shared by the level data
     index.js            level registry — getLevelDef(n), hasLevel(n)
-assets/
-  sprites/*.png         drawn heroine + clothing-skin + crown-logo art (64×96)
-  audio/*.wav           looping music (menu-bgm / game-bgm) + gameplay SFX
 tools/
   serve.py              dev server with correct ES-module MIME types
+  deploy.mjs            `npm run deploy` — prod deploy reading VERCEL_TOKEN from .env
   gen/                  pixel-art asset pipeline (run via `npm run gen`)
-    px.mjs              low-res raster toolkit: ramps, dither, outline, ×4 upscale, PNG
-    characters.mjs      pose-parameterized heroines + clothing skins (shared anatomy)
-    world.mjs           tile atlas (variants/edges/grass caps), collectibles, enemies, portal
-    backgrounds.mjs     dithered-band skies + wrapping parallax silhouettes per theme
-    audio.mjs           synthesized music + SFX (WAV encoder)
-    index.mjs           orchestrator — writes the full asset set deterministically
   test/
     smoke.mjs           boots the game in real Edge, asserts it reaches the menu
-    features.mjs        deeper checks: audio buses, movement, Insert Coin, finale receipt
-    levels.mjs          boots each level 1–4 (no errors) + screenshots the themed art
+    features.mjs        audio buses, movement, Insert Coin, finale receipt
+    levels.mjs          boots each level 1–6 (no errors) + screenshots the themed art
     play.mjs            autoplay bot drives each level to its goal (reachability guard)
+    mobile.mjs          iPhone-landscape emulation: audio unlock, controls, fit, install hint
+    browser.mjs         shared Edge launcher for the test scripts
+.claude/skills/         project skills: serve-game, deploy, mobile-check, regen-assets
+.github/workflows/ci.yml  CI: module syntax + smoke/levels gates (feature/autoplay non-blocking)
+assets/fonts/           the vendored pixel UI font (Pixelify Sans, OFL) — Kaplay + DOM
 ```
 
 ## Levels
 
 Levels are **data**: an ASCII tile map + a colour theme (see `src/levels/level1.js` …
-`level4.js`). `src/levels/build.js` turns any such map into the world, so adding more
-levels means adding sibling data files — no new rendering/collision code. Tile legend:
+`level6.js`). `src/levels/build.js` turns any such map into the world, so adding more levels
+means adding sibling data files — no new rendering/collision code. The base legend:
 
 ```
 =  solid platform / ground      ^  hazard (rovi/ricci/ghiaccio → respawn)
@@ -156,48 +228,50 @@ s  stalactite (drops from the ceiling, then resets → respawn)
 (space)  air — a gap in the ground rows is a ravine (burrone)
 ```
 
-- **Livello 1 — Foresta Incantata**: a clear running lane, ravines, brambles, 6 golden apples.
-- **Livello 2 — Abissi di Corallo**: coral floor, sea-urchin hazards, **patrolling crabs**,
-  6 pearls, underwater backdrop with bubbles.
-- **Livello 3 — Tetti d'Oriente**: pagoda rooftops at dusk, **flying obstacles** (crows that
-  patrol the air and bob), broken-tile spikes, 5 lanterns.
-- **Livello 4 — Cime Innevate**: snowy peaks, **stalactites** that drop from the ceiling and
-  reset, 5 crystals, drifting snow.
+Later phases add more mechanic tiles — springs, crumbling platforms, updrafts, swoopers (`g`),
+rollers, breeze columns, pendulum chandeliers, the **armored swooper** (`S`, a 2-hp diving
+guardian that enrages on a stomp) and the **feather** (`+`, a high-jump power-up on the bonus
+routes). See `src/levels/mapkit.js` + `build.js` for the full legend and `MECHANICS` / `POWERUP`
+in `src/config.js` for the tunables.
 
-The heroine is about 1.5 tiles tall, so each lane is kept clear of head-height obstacles and
-hazards sit one-per-segment, well clear of the ravine edges — fair to jump, never a wall.
-Touching a hazard or enemy, or falling into a ravine, respawns you at the start (no
-game-over, spec §4). The camera follows the heroine across each ~2-screen level. On
-reaching the goal, a **reward screen** unlocks the next clothing layer and continues to
-the next level.
+- **Livello 1 — Foresta Incantata**: a clear running lane, ravines, brambles, golden apples.
+- **Livello 2 — Abissi di Corallo**: coral floor, sea-urchin hazards, **patrolling crabs**, pearls.
+- **Livello 3 — Tetti d'Oriente**: pagoda rooftops at dusk, **flying obstacles**, lanterns.
+- **Livello 4 — Cime Innevate**: snowy peaks, **stalactites** that drop and reset, crystals.
+- **Livello 5 — Giardino del Crepuscolo**: a dusk garden of roses 🌹, **breeze columns** of
+  petals that carry you forward and soften the fall (long assisted glides).
+- **Livello 6 — Castello Reale**: the royal castle, goblets 🏆, swinging **pendulum
+  chandeliers** (lethal bobs with timed safe windows) and the **Gargoyle Custode**.
+
+Touching a hazard or enemy, or falling into a ravine, shows the Insert-Coin overlay and
+respawns you (from the last checkpoint, if any). On reaching the goal, a **reward screen**
+unlocks the next clothing layer and continues to the next level. Clearing **Livello 6** leads
+to the finale (the non-playable level 7).
 
 ## Saving & resuming
 
 Progress (chosen heroine + current level) is saved to `localStorage` after every level
-(`src/state.js`). Reload the page and the menu shows a **Riprendi · Livello N** button
-that drops you straight back in — wearing the skins unlocked so far. **Nuova partita**
-starts a fresh run from level 1.
+(`src/state.js`). Reload and the menu shows a **Riprendi · Livello N** button that drops you
+straight back in — wearing the skins unlocked so far. **Nuova partita** starts fresh from
+level 1.
 
-## Skins (sprite layering, spec §3)
+## Skins (sprite layering)
 
-Clearing a level unlocks a clothing layer that is drawn **on top of** the chosen base
-body (same 64×96 transparent sprite, same centre): Gonna Reale → Corpetto Elegante →
-Collana → Corona. Which layers are worn is **derived from the saved level** (no extra
-state): on level N you wear every skin whose `afterLevel < N` (see `SKINS` /
-`unlockedSkinKeys` in `src/config.js`). `makePlayer(char, pos, skinKeys)` adds the layers
-as child sprites and keeps their `flipX` in sync with the body. Placeholder skin art is
-generated alongside the other assets (`skirt/bodice/necklace/crown.png`).
+Clearing a level unlocks a clothing layer drawn **on top of** the chosen base body (same 64×96
+transparent sprite, same centre). Six layers, in paint order: **Gonna Reale → Corpetto
+Elegante → Collana → Corona → Guanti di Seta → Mantello Reale**. Which layers are worn is
+**derived from the saved level** (on level N you wear every skin whose `afterLevel < N`; see
+`SKINS` / `unlockedSkinKeys` in `src/config.js`).
 
 ## Finale — Sala da Ballo
 
-Clearing Level 4 leads to the **Sala da Ballo**, a non-playable cinematic
-(`src/scenes/finale.js`). No controls: the chosen heroine stands centre-stage as the
-**Principessa Perfetta**, wearing all four skins (skirt + bodice + necklace + crown), with
-a centred box showing a **personalized message**. Edit that message — the gift's heartfelt
-core — in the `FINALE` constant in `src/config.js` (keep it bracket-free and use only
-widely-shipped emoji; decorative emoji are rendered as their own untinted objects because
-`k.color()` would darken the glyph). Saved progress remembers the finale, so a reload
-offers **Rivedi il Gran Ballo**; **Nuova partita** starts a fresh run from level 1.
+Clearing Level 6 leads to the **Sala da Ballo**, a non-playable cinematic
+(`src/scenes/finale.js`). The chosen heroine stands centre-stage as the **Principessa
+Perfetta**, wearing all **six** skins, with a centred box showing a **personalized message**
+(edit `FINALE.message` in `src/config.js`). The heartfelt note is shown first; after a reading
+beat the **Scontrino** (receipt) payoff appears with the run's Coccoline bill and the WhatsApp
+"Paga il Debito!" — its **Chiudi** returns to the message. Saved progress remembers the finale,
+so a reload offers **Rivedi il Gran Ballo**.
 
 ## Polishing & meta-game
 
@@ -205,27 +279,24 @@ A "juiciness" + meta-game layer sits on top of the core game (see `Specifiche_Po
 All DOM/HTML is isolated in `index.html`, `style.css`, and `src/ui/`, so it never touches the
 collision logic in `game.js`:
 
-- **Insert Coin (no game-over).** Touching a hazard/enemy or falling off the world freezes
-  the heroine and shows an HTML overlay; **Inserisci Coin** adds 500 to
-  `localStorage.totaleCoccoline` and restarts the level. The debt is cumulative across the
-  whole gift — it is *not* reset by "Nuova partita".
+- **Insert Coin (no game-over).** Failing freezes the heroine and shows an HTML overlay;
+  **Inserisci Coin** adds 500 to `localStorage.totaleCoccoline` and restarts the level. The
+  debt is cumulative across the whole gift.
 - **Finale receipt → WhatsApp.** The Sala da Ballo shows a paper *Scontrino* with the total
-  debt and a **Paga il Debito!** button that opens a pre-filled WhatsApp share (no fixed
-  number; the amount is substituted into the link).
-- **Game feel.** Squash & stretch on jump/land, a confetti burst on every pickup, a soft
-  themed aura behind each collectible, rising motes at every level goal, and synthesized
-  **sound effects** (jump, collect, Insert-Coin, level clear, finale fanfare) wrapped in
-  `src/sfx.js`, plus gentle looping **music** (menu waltz + softer gameplay loop) on a
-  separate bus — see below.
-- **Per-level art.** A two-layer parallax backdrop (0.2× / 0.5× the camera speed) whose
-  ridge colours are tuned per theme (`parallaxFar` / `parallaxNear`) so they read on both
-  dark (forest, dusk) and pale (snow) skies, plus signature ambient particles for every
-  level: **enchanted-forest fireflies/pollen**, coral bubbles, dusk embers, alpine snow.
+  debt and a **Paga il Debito!** button that opens a pre-filled WhatsApp share.
+- **Game feel.** Squash & stretch, confetti on pickups, themed ambient particles, and
+  synthesized **SFX** + per-theme looping **music** on independent buses.
 - **Independent audio buses.** Two top-right toggles — **🎵 Music** and **🔊 SFX** — silence
-  the looping background music and the gameplay effects separately (each choice persisted to
-  `localStorage`), so the music can go quiet while the playful cues stay on, or vice-versa.
-- **Quality of life.** A CSS fade between scenes and instant press feedback on the touch buttons.
+  each bus separately, and the **Impostazioni** panel adds a continuous **volume slider** per
+  bus (all persisted to `localStorage`).
+- **Pixel UI.** A vendored pixel font (Pixelify Sans, OFL) is the Kaplay default and the DOM
+  `@font-face`, so the HUD/menus match the pixel-art world; emoji/★ render on the system font.
+- **Pause & settings.** Esc / ⏸ freezes the game (`k.getTreeRoot().paused`) behind a DOM
+  overlay; settings (volume + reset progress) is reachable from the menu and the pause screen.
+- **Living menu.** The title screen reuses the garden parallax backdrop with drifting petals and
+  a breathing heroine preview, instead of a flat panel.
+- **Offline / PWA.** A service worker ([`sw.js`](sw.js)) caches the shell + assets so the game
+  plays offline after the first visit and installs as a standalone app (manifest in place).
+- **Quality of life.** CSS fade between scenes, instant press feedback on the touch buttons.
 
-The core journey plus this polishing layer are complete. Real art and audio remain the
-natural next step (drop files into `assets/` keeping the same names; only `src/config.js`
-knows the paths).
+The core journey plus this polishing layer are complete.

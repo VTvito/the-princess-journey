@@ -1,0 +1,9 @@
+{
+  "_README": "Template for the Playwright MCP (interactive browser: navigate/click/screenshot/device-emulate). TO ACTIVATE: copy this file to .mcp.json, restart the Claude Code session, and approve the server when prompted. Optional device emulation: add e.g. \"--device\", \"iPhone 15\" to args. Note: it's Chromium-based, NOT iOS WebKit — real iOS audio/safe-area still need a physical device.",
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
+  }
+}

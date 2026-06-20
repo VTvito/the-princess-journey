@@ -48,7 +48,7 @@ export function makePlayer(char, pos, skinKeys = [], feel = {}) {
     k.area({ scale: k.vec2(0.62, 0.96) }),
     k.body(), // gravity + collisions (k.setGravity is set by the scene)
     "player",
-    { facing: 1 }, // 1 = right, -1 = left
+    { facing: 1, jumpMul: 1 }, // facing: 1 = right, -1 = left; jumpMul: feather high-jump boost
   ]);
 
   // Skin layering: child sprites at the same centre (shared with the finale avatar).
@@ -136,7 +136,7 @@ export function makePlayer(char, pos, skinKeys = [], feel = {}) {
     sinceGrounded = groundedNow ? 0 : sinceGrounded + dt;
     sinceJumpPressed = consumeJump() ? 0 : sinceJumpPressed + dt;
     if (sinceJumpPressed <= PHYSICS.JUMP_BUFFER && (groundedNow || sinceGrounded <= PHYSICS.COYOTE_TIME)) {
-      player.jump(PHYSICS.JUMP_FORCE);
+      player.jump(PHYSICS.JUMP_FORCE * player.jumpMul); // jumpMul > 1 while a feather is active
       sfx("jump");
       player.squashX = 0.9; // stretch tall on take-off
       player.squashY = 1.18;

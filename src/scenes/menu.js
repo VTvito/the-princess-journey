@@ -13,8 +13,11 @@ import {
   resetCoccolineRun,
 } from "../state.js";
 import { getLevelDef } from "../levels/index.js";
+import { drawBackground } from "./game.js";
 import { fadeToScene } from "../ui/transition.js";
 import { hideInsertCoin } from "../ui/insertCoin.js";
+import { hidePause } from "../ui/pauseMenu.js";
+import { showSettings, hideSettings } from "../ui/settings.js";
 import { hideReceipt } from "../ui/receipt.js";
 import { sfx } from "../sfx.js";
 import { playBgm } from "../audio.js";
@@ -55,21 +58,28 @@ export function registerMenuScene() {
     // Defensive: clear any DOM overlay left over from gameplay / the finale.
     hideInsertCoin();
     hideReceipt();
+    hidePause();
+    hideSettings();
+    // Hide the gameplay touch controls so they never cover the menu's character cards.
+    document.body.classList.remove("playing");
 
     // Resume the gentle menu track when we return here with audio already unlocked. On the
     // very first load the AudioContext is still locked, so this no-ops until the first click
     // (the click handlers below start it within the user gesture browsers require).
     playBgm("menu-bgm", 0.4);
 
-    // Soft fairy-tale backdrop.
-    k.add([k.rect(GAME_W, GAME_H), k.pos(0, 0), k.color(...PALETTE.lilac)]);
+    // Living fairy-tale backdrop: reuse the garden parallax (twilight violet sky, drifting
+    // rose petals) so the menu reads as part of the world, not a flat panel. A soft scrim
+    // over it keeps the light title/labels readable against the artwork.
+    drawBackground(getLevelDef(5).theme);
+    k.add([k.rect(GAME_W, GAME_H), k.pos(0, 0), k.color(...PALETTE.deepBlue), k.opacity(0.34), k.z(-50)]);
 
-    // Title.
+    // Title (cream so it reads on the dusk backdrop).
     k.add([
-      k.text("\u{1F451} The Princess Journey", { size: 64 }),
+      k.text("The Princess Journey", { size: 64 }),
       k.pos(GAME_W / 2, 110),
       k.anchor("center"),
-      k.color(...PALETTE.deepBlue),
+      k.color(...PALETTE.cream),
     ]);
 
     // Two layers: the start prompt and the (initially hidden) character chooser.
@@ -88,9 +98,20 @@ export function registerMenuScene() {
       k.text("Un dono per Anna", { size: 28 }),
       k.pos(GAME_W / 2, 200),
       k.anchor("center"),
-      k.color(...PALETTE.deepBlue),
-      k.opacity(0.8),
+      k.color(...PALETTE.cream),
+      k.opacity(0.85),
     ]);
+
+    // Decorative heroine preview (the saved character if resuming, else Anna), idly breathing
+    // on the right so the title screen feels alive. On the start layer, so it hides the moment
+    // the chooser opens; off to the side, clear of the centred title + buttons.
+    const previewChar = CHARACTERS.find((c) => c.id === getSelectedCharacter()) || CHARACTERS[0];
+    startLayer.add([
+      k.sprite(previewChar.sprite),
+      k.pos(GAME_W * 0.81, GAME_H * 0.62),
+      k.anchor("center"),
+      k.scale(3.4),
+    ]).play("idle");
 
     // Resume: if a previous session got past level 1 (saved in localStorage), offer to
     // continue from there. The chosen character and current level both persist, so a page
@@ -117,7 +138,7 @@ export function registerMenuScene() {
         y: GAME_H / 2 - 10,
         w: 420,
         h: 90,
-        label: resumeFinale ? "↻  Rivedi il Gran Ballo" : `↻  Riprendi · Livello ${savedLevel}`,
+        label: resumeFinale ? "Rivedi il Gran Ballo" : `Riprendi · Livello ${savedLevel}`,
         onClick: () => {
           // Start the destination's track within this gesture (unlocks the AudioContext).
           if (resumeFinale) playBgm("finale-bgm", 0.34);
@@ -130,8 +151,8 @@ export function registerMenuScene() {
         k.text(resumeFinale ? FINALE.title : getLevelDef(savedLevel).name, { size: 20 }),
         k.pos(GAME_W / 2, GAME_H / 2 + 48),
         k.anchor("center"),
-        k.color(...PALETTE.deepBlue),
-        k.opacity(0.7),
+        k.color(...PALETTE.cream),
+        k.opacity(0.75),
       ]);
       makeButton(startLayer, {
         x: GAME_W / 2,
@@ -148,10 +169,24 @@ export function registerMenuScene() {
         y: GAME_H / 2 + 40,
         w: 280,
         h: 90,
-        label: "▶  Start",
+        label: "Start",
         onClick: openChooser,
       });
     }
+
+    // Settings (volume) — bottom of the start screen, hidden once the chooser opens.
+    makeButton(startLayer, {
+      x: GAME_W / 2,
+      y: GAME_H - 56,
+      w: 220,
+      h: 56,
+      label: "Impostazioni",
+      onClick: () => {
+        sfx("select");
+        showSettings();
+      },
+      base: PALETTE.cream,
+    });
 
     // --- Character chooser layer ---
     // Label at y=180 (spans ~162-198) clears the card top edge (240, ~232 when hover-scaled).
@@ -159,7 +194,7 @@ export function registerMenuScene() {
       k.text("Scegli la tua eroina", { size: 36 }),
       k.pos(GAME_W / 2, 180),
       k.anchor("center"),
-      k.color(...PALETTE.deepBlue),
+      k.color(...PALETTE.cream),
     ]);
 
     const cardW = 300;

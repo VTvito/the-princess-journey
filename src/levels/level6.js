@@ -115,10 +115,12 @@ export const LEVEL_6 = {
       // A bat over the hall (kept clear of ravine jump-arcs and chandelier hop zones —
       // an air enemy there either kills the arc or vetoes the bot's needed hop).
       { x: 50, y: AIR, ch: "f" },
-      // The hall ghost between the chandeliers. (No ghost over the staircase: an air
-      // enemy above a required step-up jump deadlocks the bot's hop — the L3 lesson.
-      // Chandelier 3 guards the climb instead.)
-      { x: 72, y: 8, ch: "g" },
+      // The hall ghost between the chandeliers — an ARMORED swooper (2 hp), the last
+      // guardian to soften you up before the Gargoyle. Same flight as a ghost, so it stays
+      // bot-passable between dives. (No ghost over the staircase: an air enemy above a
+      // required step-up jump deadlocks the bot's hop — the L3 lesson. Chandelier 3 guards
+      // the climb instead.)
+      { x: 72, y: 8, ch: "S" },
       // The Gargoyle Custode, hovering over the last stretch before the doors (the
       // staircase top is flat — no required jump under it, so the bot can sneak past
       // between dives).

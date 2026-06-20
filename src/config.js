@@ -174,11 +174,25 @@ export const SCORE = {
 // ravine still ends the run.
 export const POWERUP = {
   DURATION: 7, // seconds of invincibility per star
+  // Feather (Fase 2): a short high-jump window — the player's jump force is multiplied while
+  // it lasts, so she can reach the high bonus routes. Placed off the critical path (bonus
+  // perches), so grabbing it is always optional and never affects the autoplay reachability.
+  FEATHER_DURATION: 8,
+  FEATHER_JUMP_MUL: 1.4,
 };
 
 // Asset manifest — the swap point. Replace files in /assets and, if an extension
 // changes, update the path here. Keys are stable so game code never hard-codes paths.
 export const ASSETS = {
+  // UI font (loaded in src/assets.js, set as the Kaplay default in src/kaplayCtx.js and
+  // mirrored via @font-face in style.css). A pixel font so the HUD/menus match the crisp
+  // pixel-art world instead of the old anti-aliased system "sans-serif". Pixelify Sans
+  // (OFL) covers Latin-1 incl. Italian accents (à è é ì ò ù); it has NO emoji/symbol glyphs
+  // (▶ ↻ ★ ✨ 👑), so those few labels keep `font: "sans-serif"` per object in canvas code,
+  // while DOM falls back per-glyph automatically.
+  fonts: {
+    pixel: "assets/fonts/PixelifySans.woff2",
+  },
   sprites: {
     anna: "assets/sprites/anna.png",
     sognatrice: "assets/sprites/sognatrice.png",

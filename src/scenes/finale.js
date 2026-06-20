@@ -11,6 +11,8 @@ import { addSkinLayers, syncSkins } from "../entities/player.js";
 import { resetInput } from "../controls.js";
 import { showReceipt, hideReceipt } from "../ui/receipt.js";
 import { hideInsertCoin } from "../ui/insertCoin.js";
+import { hidePause } from "../ui/pauseMenu.js";
+import { hideSettings } from "../ui/settings.js";
 import { fadeToScene } from "../ui/transition.js";
 import { sfx } from "../sfx.js";
 import { playBgm } from "../audio.js";
@@ -26,6 +28,10 @@ export function registerFinaleScene() {
     // Defensive: clear any leftover death overlay; the receipt is shown below after a beat.
     hideInsertCoin();
     hideReceipt();
+    hidePause();
+    hideSettings();
+    // Cinematic scene — no controls; keep the gameplay touch buttons hidden.
+    document.body.classList.remove("playing");
 
     const charId = getSelectedCharacter();
     const char = CHARACTERS.find((c) => c.id === charId) || CHARACTERS[0];
@@ -60,7 +66,8 @@ export function registerFinaleScene() {
 
     // Caption above the heroine. The crown is its own object with NO color tint, so it
     // renders as a full-colour emoji — k.color() multiplies (and would darken) the glyph.
-    k.add([k.text("👑", { size: 40 }), k.pos(GAME_W / 2, 86), k.anchor("center"), k.z(11)]);
+    // It also keeps font:"sans-serif" since the pixel UI font has no emoji glyphs.
+    k.add([k.text("👑", { size: 40, font: "sans-serif" }), k.pos(GAME_W / 2, 86), k.anchor("center"), k.z(11)]);
     k.add([
       k.text(FINALE.heroineTitle, { size: 34 }),
       k.pos(GAME_W / 2, 132),
@@ -70,9 +77,12 @@ export function registerFinaleScene() {
     ]);
 
     // --- Message box (the personalized note; sized for the six-chapter message) ---
-    const boxW = 760;
-    const boxH = 250;
-    const boxY = GAME_H - 195;
+    // Box, title and body are tuned so the eight-line message sits fully inside the frame
+    // (it used to spill past the bottom edge): the body is centred in the space below the
+    // title with margin to spare above the "Torna al menu" button.
+    const boxW = 820;
+    const boxH = 256;
+    const boxY = 518;
     k.add([
       k.rect(boxW, boxH, { radius: 20 }),
       k.pos(GAME_W / 2, boxY),
@@ -83,15 +93,15 @@ export function registerFinaleScene() {
       k.z(20),
     ]);
     k.add([
-      k.text(FINALE.title, { size: 30 }),
-      k.pos(GAME_W / 2, boxY - boxH / 2 + 36),
+      k.text(FINALE.title, { size: 28 }),
+      k.pos(GAME_W / 2, boxY - boxH / 2 + 32),
       k.anchor("center"),
       k.color(...PALETTE.rose),
       k.z(21),
     ]);
     k.add([
-      k.text(FINALE.message, { size: 20, width: boxW - 80, align: "center", lineSpacing: 5 }),
-      k.pos(GAME_W / 2, boxY + 30),
+      k.text(FINALE.message, { size: 18, width: boxW - 72, align: "center", lineSpacing: 4 }),
+      k.pos(GAME_W / 2, boxY + 22),
       k.anchor("center"),
       k.color(...PALETTE.deepBlue),
       k.z(21),
@@ -122,9 +132,11 @@ export function registerFinaleScene() {
     btn.onClick(toMenu);
     k.onKeyPress(["enter", "space", "escape"], toMenu);
 
-    // The payoff (spec §2): after a beat to let the cutscene land, show the receipt with
-    // this run's Coccoline bill (+ the lifetime total) and the WhatsApp "Paga il Debito!".
-    k.wait(1.4, () => showReceipt(getCoccolineRun(), getCoccoline()));
+    // The payoff (spec §2): the receipt is a full-screen overlay that covers the heartfelt
+    // message, so hold it back long enough to actually READ the journey note first (it used
+    // to pop after 1.4s and bury the message). Its "Chiudi" button returns to the message.
+    const RECEIPT_DELAY = 6.5; // s — a comfortable read of the six-chapter message
+    k.wait(RECEIPT_DELAY, () => showReceipt(getCoccolineRun(), getCoccoline()));
   });
 }
 

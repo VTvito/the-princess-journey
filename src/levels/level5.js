@@ -95,9 +95,10 @@ export const LEVEL_5 = {
       { x: 29, y: 10, ch: "^" }, // far edge of the intro hedge
       { x: 98, y: LANE, ch: "^" }, // clear of the glide's landing zone (x93-95)
       { x: 106, y: 10, ch: "^" }, // far edge of the first garden step
-      // Dusk moths haunting the twist alley (they dive when she comes close).
+      // Dusk moths haunting the twist alley (they dive when she comes close); the second is
+      // an ARMORED moth (2 hp) — a tougher guard over the pergola bonus below.
       { x: 62, y: 8, ch: "g" },
-      { x: 74, y: 8, ch: "g" },
+      { x: 74, y: 8, ch: "S" },
       // Garden beetles patrolling the open stretches.
       { x: 50, y: LANE, ch: "c" },
       { x: 80, y: LANE, ch: "c" },
@@ -111,10 +112,16 @@ export const LEVEL_5 = {
       { x: 89, y: 9, ch: "o" },
       { x: 90, y: 7, ch: "o" },
       { x: 91, y: 8, ch: "o" },
-      // The pergola balcony's rose trail.
+      // The pergola balcony's rose trail (a one-way bonus route, bot-invisible).
       { x: 62, y: 6, ch: "o" },
       { x: 65, y: 6, ch: "o" },
       { x: 68, y: 6, ch: "o" },
+      // REMIX (Fase 2): a feather on the balcony, then a rose stash three cells higher —
+      // out of a normal jump's reach, so only the feather's high-jump claims it (all while
+      // the armored moth haunts the alley below). Off the critical path → bot unaffected.
+      { x: 66, y: 6, ch: "+" },
+      { x: 64, y: 3, ch: "o" },
+      { x: 67, y: 3, ch: "o" },
       // The terraced ascent pays out too.
       { x: 104, y: 9, ch: "o" },
       { x: 109, y: 8, ch: "o" },

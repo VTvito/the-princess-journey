@@ -1,0 +1,45 @@
+# CI for The Princess Journey — a no-build static game, so there's nothing to compile.
+# Two jobs:
+#   • syntax  — parses every ES module with `node --check`. Fast, deterministic; catches the
+#               realistic breakage for this repo (a typo / bad edit in a shipped module).
+#   • browser — boots the game in headless Edge against the local server and runs the smoke +
+#               per-level boot gates. The feature + autoplay suites also run, but as
+#               non-blocking: the autoplay bot is stochastic and a couple of feature probes
+#               sample at frame boundaries (see CLAUDE.md "Test flakiness"), so they inform
+#               rather than gate.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Parse every ES module
+        run: find src tools -type f \( -name '*.mjs' -o -name '*.js' \) -print0 | xargs -0 -n1 node --check
+
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Install dependencies
+        run: npm install
+      - name: Install Edge for playwright-core
+        run: npx playwright install --with-deps msedge
+      - name: Boot gates (smoke + per-level) and informational suites
+        run: |
+          python3 tools/serve.py 8137 &
+          sleep 3
+          node tools/test/smoke.mjs
+          node tools/test/levels.mjs
+          node tools/test/features.mjs || echo "::warning::features suite non-blocking (frame-boundary flakiness — see CLAUDE.md)"
+          node tools/test/play.mjs || echo "::warning::autoplay suite non-blocking (stochastic bot — see CLAUDE.md)"

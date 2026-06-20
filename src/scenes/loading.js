@@ -7,6 +7,9 @@ import { GAME_W, GAME_H, PALETTE } from "../config.js";
 
 export function registerLoadingScene() {
   k.scene("loading", () => {
+    // Touch controls belong to gameplay only — keep them hidden on the loading screen.
+    document.body.classList.remove("playing");
+
     k.add([k.rect(GAME_W, GAME_H), k.pos(0, 0), k.color(...PALETTE.deepBlue)]);
 
     k.add([

@@ -10,6 +10,8 @@
 //              "F" checkpoint flag   "g" swooper (diving ghost)   "r" roller (chasing ball)
 //              "w" updraft column cell   "B" breeze column cell (horizontal petal current)
 //              "P" pendulum chandelier (anchor cell; the lethal bob swings below)
+//              "S" armored swooper (2-hp diving guardian — enrages on a stomp)
+//              "+" feather (high-jump power-up)
 //              "G" Gargoyle Custode (mini-boss: a 2x stone swooper with 3 hp)
 //              "@" spawn   ">" goal   " " air (a gap in the ground rows is a ravine)
 // Moving platforms are not ASCII: a level may add `movers: [{x,y,w,dx,dy,period,phase}]`
@@ -91,6 +93,9 @@ export function buildLevel(def) {
         case "g":
           makeSwooper(x + TILE / 2, y + TILE / 2);
           break;
+        case "S":
+          makeArmoredSwooper(x + TILE / 2, y + TILE / 2);
+          break;
         case "G":
           makeGargoyle(x + TILE / 2, y + TILE / 2);
           break;
@@ -115,6 +120,9 @@ export function buildLevel(def) {
           break;
         case "*":
           makePowerup(x + TILE / 2, y + TILE / 2);
+          break;
+        case "+":
+          makeFeather(x + TILE / 2, y + TILE / 2);
           break;
         case "c":
           makeCrab(x + TILE / 2, y + TILE / 2, theme);
@@ -321,7 +329,7 @@ function makeCheckpoint(x, y, TILE) {
 
 // --- Swooper: hovers in the air, dives toward the lane when the heroine comes near, then
 // floats back up. Tagged "enemy" → stompable, lethal on side contact (same rules as all).
-function makeSwooper(cx, cy) {
+function makeSwooper(cx, cy, opts = {}) {
   const swooper = k.add([
     k.rect(34, 30, { radius: 10 }),
     k.opacity(0),
@@ -330,10 +338,25 @@ function makeSwooper(cx, cy) {
     k.area({ scale: 0.85 }),
     k.z(4),
     "enemy",
-    { baseY: cy, diving: false, t: 0, cooldown: 0 },
+    {
+      baseY: cy,
+      diving: false,
+      t: 0,
+      cooldown: 0,
+      hp: opts.hp, // undefined for a regular swooper → a single stomp fells it
+      // Per-instance dive tunables so a wounded armored swooper can ENRAGE (the game scene
+      // shortens these on each stomp); a regular swooper just keeps them at the constants.
+      swoopTime: MECHANICS.SWOOP_TIME,
+      swoopCooldown: MECHANICS.SWOOP_COOLDOWN,
+    },
   ]);
   const art = swooper.add([k.sprite("swooper"), k.anchor("center"), k.pos(0, 0)]);
+  if (opts.tint) {
+    art.use(k.color(...opts.tint)); // armored = iron-tinted ghost
+    swooper.baseTint = k.rgb(...opts.tint); // the wound flash resets to this, not stone-grey
+  }
   art.play("float");
+  swooper.art = art; // exposed so the game scene can flash it on a (non-fatal) stomp
   swooper.onUpdate(() => {
     const dt = k.dt();
     const p = k.get("player")[0];
@@ -346,16 +369,25 @@ function makeSwooper(cx, cy) {
       }
     } else {
       swooper.t += dt;
-      const f = Math.min(1, swooper.t / MECHANICS.SWOOP_TIME);
+      const f = Math.min(1, swooper.t / swooper.swoopTime);
       swooper.pos.y = swooper.baseY + Math.sin(f * Math.PI) * MECHANICS.SWOOP_DROP; // down & back
       if (p) swooper.pos.x += Math.sign(p.pos.x - swooper.pos.x) * 46 * dt; // lean toward her
       if (f >= 1) {
         swooper.diving = false;
-        swooper.cooldown = MECHANICS.SWOOP_COOLDOWN;
+        swooper.cooldown = swooper.swoopCooldown;
       }
     }
   });
   return swooper;
+}
+
+// --- Armored swooper (Fase 2): a 2-hp diving guardian. Same flight as a swooper — identical
+// dive arc, cooldown sneak window and hitbox — so the autoplay bot passes it exactly like a
+// regular swooper (it never stomps; it slips by during the cooldown). The only difference is
+// that it shrugs off the first stomp and ENRAGES (quicker dives), a mid-game step up toward
+// the L6 Gargoyle. Iron tint so it reads as armored.
+function makeArmoredSwooper(cx, cy) {
+  return makeSwooper(cx, cy, { hp: 2, tint: [120, 135, 162] });
 }
 
 // --- Gargoyle Custode (Fase 5 mini-boss): a stone swooper at double size with 3 hp.
@@ -397,6 +429,7 @@ function makeGargoyle(cx, cy) {
   ]);
   art.play("float");
   gargoyle.art = art;
+  gargoyle.baseTint = k.rgb(150, 150, 170); // wound flash resets to the stone tint
   gargoyle.onUpdate(() => {
     const dt = k.dt();
     const p = k.get("player")[0];
@@ -706,6 +739,53 @@ function makePowerup(cx, cy) {
   return star;
 }
 
+// --- Feather power-up (Fase 2): grabbing it grants a short high-jump window (the game scene
+// boosts the player's jump force). Drawn from primitives like the star — an invisible circle
+// collider tagged "feather" + a child feather polygon (vane + white spine) and a cool aura —
+// so it needs no art asset and reads the same in every theme. Bobs and tilts gently.
+function makeFeather(cx, cy) {
+  const COL = [200, 224, 248]; // pale sky-blue, distinct from the star's gold
+  const item = k.add([
+    k.circle(14),
+    k.opacity(0),
+    k.pos(cx, cy),
+    k.anchor("center"),
+    k.area({ scale: 1.1 }), // slightly generous pickup (casual)
+    k.z(3),
+    "feather",
+    { baseY: cy, t: k.rand(0, Math.PI * 2) },
+  ]);
+  // Cool aura behind the feather so it reads as "special" (mirrors the star's warm halo).
+  const halo = item.add([
+    k.circle(20),
+    k.color(...COL),
+    k.anchor("center"),
+    k.pos(0, 0),
+    k.opacity(0.18),
+    k.z(2),
+  ]);
+  // The feather vane (a leaf silhouette pointing up) + a bright central spine.
+  const vane = item.add([
+    k.polygon([
+      k.vec2(0, -18), k.vec2(5, -6), k.vec2(7, 4), k.vec2(4, 14),
+      k.vec2(0, 17), k.vec2(-4, 14), k.vec2(-7, 4), k.vec2(-5, -6),
+    ]),
+    k.anchor("center"),
+    k.pos(0, 0),
+    k.color(...COL),
+    k.rotate(0),
+    k.z(3),
+  ]);
+  vane.add([k.rect(2, 28), k.anchor("center"), k.pos(0, -1), k.color(255, 255, 255), k.opacity(0.7)]);
+  item.onUpdate(() => {
+    item.t += k.dt() * 3;
+    item.pos.y = item.baseY + Math.sin(item.t) * 6; // bob
+    vane.angle = Math.sin(item.t * 0.7) * 12; // gentle sway (only the art tilts, not the hitbox)
+    halo.opacity = 0.12 + 0.12 * (0.5 + 0.5 * Math.sin(item.t * 2)); // pulse
+  });
+  return item;
+}
+
 // --- Crab enemy: patrols horizontally, tagged "enemy". Primitive art (no asset needed).
 function makeCrab(cx, cy, theme) {
   // Collider-only invisible body (same 40×24 hitbox + "enemy" tag + patrol state); the crab
@@ -816,7 +896,8 @@ function makeGoal(cx, cy, theme) {
     beam.opacity = 0.22 + 0.16 * Math.abs(Math.sin(k.time() * 2));
   });
   k.add([
-    k.text("✨", { size: 44 }),
+    // sans-serif: the sparkle emoji isn't in the pixel UI font.
+    k.text("✨", { size: 44, font: "sans-serif" }),
     k.pos(cx, cy + 20 - H),
     k.anchor("center"),
     k.z(3),

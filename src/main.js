@@ -5,6 +5,9 @@ import { k } from "./kaplayCtx.js";
 import { loadAssets } from "./assets.js";
 import { bindTouchButtons, getInput } from "./controls.js";
 import { bindAudioToggle } from "./ui/audioToggle.js";
+import { installAudioUnlock } from "./audioUnlock.js";
+import { bindInstallHint } from "./ui/installHint.js";
+import { bindAudioDebug } from "./ui/audioDebug.js";
 import { registerLoadingScene } from "./scenes/loading.js";
 import { registerMenuScene } from "./scenes/menu.js";
 import { registerGameScene } from "./scenes/game.js";
@@ -19,6 +22,17 @@ bindTouchButtons();
 // Wire the global audio on/off button once; it applies any saved mute preference.
 bindAudioToggle();
 
+// Unlock the WebAudio context on the first real DOM gesture (iOS Safari needs this — see
+// src/audioUnlock.js). Without it, neither music nor SFX ever play on iPhone.
+installAudioUnlock();
+
+// "Add to Home" hint on iOS Safari (true fullscreen lives only in the installed PWA).
+bindInstallHint();
+
+// On-screen WebAudio diagnostics — only renders when the URL carries ?audiodebug=1. Lets a
+// real iPhone report its AudioContext state when iOS audio can't be reproduced in emulation.
+bindAudioDebug();
+
 // Register every scene before navigating.
 registerLoadingScene();
 registerMenuScene();
@@ -27,6 +41,22 @@ registerFinaleScene();
 
 // Start on the loading screen; it calls k.go("menu") once assets are ready.
 k.go("loading");
+
+// Register the service worker for offline play / PWA install (src/sw.js → /sw.js at the
+// site root, scope "/"). Production only: on localhost it would cache files between the
+// Playwright test runs (and dev edits), serving stale content — so the dev/test loop stays
+// service-worker-free, exactly like the window.__pj dev handle below.
+if (
+  "serviceWorker" in navigator &&
+  location.hostname !== "localhost" &&
+  location.hostname !== "127.0.0.1"
+) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {
+      // Offline support just won't be available this session — never break the game over it.
+    });
+  });
+}
 
 // Dev-only test handle (localhost). Lets automated tests/dev tools introspect the
 // engine AND drive it: `input` is the live virtual-input object (set .left/.right/.jump

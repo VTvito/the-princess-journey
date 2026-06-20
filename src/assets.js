@@ -6,6 +6,11 @@ import { ASSETS } from "./config.js";
 import { SHEET, ANIMS, ANIMATED_SPRITES, WORLD_SHEETS } from "./animspec.js";
 
 export function loadAssets() {
+  // UI font(s): the pixel font set as the Kaplay default in kaplayCtx.js. `filter: "nearest"`
+  // keeps the glyph atlas crisp (matches the global crisp/nearest sampling) instead of blurry.
+  for (const [key, path] of Object.entries(ASSETS.fonts || {})) {
+    k.loadFont(key, path, { filter: "nearest" });
+  }
   for (const [key, path] of Object.entries(ASSETS.sprites)) {
     if (ANIMATED_SPRITES.includes(key)) {
       // Heroines + skins are 8×3 animation sheets sharing one contract (animspec.js).

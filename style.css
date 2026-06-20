@@ -2,6 +2,15 @@
    fit the viewport (letterbox: true), keeping aspect ratio; the body color shows in the
    bars. */
 
+/* Pixel UI font (same file Kaplay loads as "pixel" — see src/assets.js). Used for the DOM
+   overlays so the HTML UI matches the pixel-art canvas. CSS falls back per-glyph to the
+   system font, so emoji in these elements (📲 🎵 🔊 ❤️) still render in colour. */
+@font-face {
+  font-family: "PixelifySans";
+  src: url("assets/fonts/PixelifySans.woff2") format("woff2");
+  font-display: swap;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -11,7 +20,12 @@
 html,
 body {
   width: 100%;
-  height: 100%;
+  /* Track the *actually visible* viewport. On iOS Safari `100%`/`100vh` resolve against the
+     large viewport (as if the toolbars were hidden), so the letterboxed 16:9 canvas was
+     centred in a box taller than the screen and its top edge slipped under the status/URL
+     bar. `100dvh` follows the live visible height, so the game fits without that clip. */
+  height: 100vh; /* fallback for browsers without dvh */
+  height: 100dvh;
   overflow: hidden;
   background: #26325c; /* deep blue letterbox bars */
   /* Disable touch gestures (scroll/zoom) that would interfere with game controls. */
@@ -39,7 +53,7 @@ body {
   justify-content: center;
   background: #26325c;
   color: #fff8f0;
-  font-family: sans-serif;
+  font-family: "PixelifySans", sans-serif;
   text-align: center;
   z-index: 50; /* portrait warning stays above the gameplay modals + fade */
 }
@@ -77,7 +91,9 @@ body {
 
 /* --- On-screen touch controls ----------------------------------------------
    A full-viewport, click-through layer; only the buttons capture input. Hidden by
-   default and revealed on coarse-pointer (touch) devices. */
+   default and revealed only DURING GAMEPLAY (body.playing) on coarse-pointer (touch)
+   devices — so they never cover the menu's character cards. Offsets respect the iOS
+   safe area (notch / home indicator) so nothing falls off-screen in landscape. */
 #touch-controls {
   position: fixed;
   inset: 0;
@@ -86,19 +102,17 @@ body {
   z-index: 5; /* above canvas, below the portrait rotate-overlay */
 }
 
+/* Shared look for every touch button: translucent at rest (unobtrusive over the art),
+   solid gold while pressed (.is-active is toggled in src/controls.js). */
 #touch-controls button {
   pointer-events: auto; /* …but the buttons themselves are tappable */
   position: absolute;
-  bottom: 24px;
-  width: 84px;
-  height: 84px;
-  border: none;
-  border-radius: 50%;
-  font-size: 36px;
-  line-height: 1;
+  border: 1.5px solid rgba(255, 248, 240, 0.5); /* soft light edge → reads on any backdrop */
   color: #fff8f0;
-  background: rgba(38, 50, 92, 0.45); /* deep blue, translucent */
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  background: rgba(38, 50, 92, 0.32); /* deep blue, mostly transparent at rest */
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.28);
+  font-size: 34px;
+  line-height: 1;
   touch-action: none;
   -webkit-user-select: none;
   user-select: none;
@@ -106,30 +120,51 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  /* Generous invisible hit padding beyond the visible circle (spec §2). */
-  padding: 8px;
+  transition: background 0.08s ease, transform 0.08s ease, opacity 0.12s ease;
 }
-
 #touch-controls button.is-active {
-  background: rgba(212, 175, 55, 0.7); /* gold while pressed */
+  background: rgba(212, 175, 55, 0.85); /* gold while pressed */
+  border-color: rgba(212, 175, 55, 0.9);
+  color: #26325c;
   transform: scale(0.94);
 }
 
-/* D-pad bottom-left: left and right side by side. */
+/* Direction pad: a single slim horizontal pill, bottom-left, holding the two halves. */
+#dpad {
+  position: absolute;
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  left: calc(22px + env(safe-area-inset-left, 0px));
+  display: flex;
+  pointer-events: none; /* the container is inert; its buttons capture input */
+}
+#dpad button {
+  position: static; /* flow inside the pill instead of absolute corners */
+  width: 76px;
+  height: 66px;
+  opacity: 0.9;
+}
 #btn-left {
-  left: 24px;
+  border-radius: 36px 6px 6px 36px; /* rounded outer (left) edge, flat inner seam */
+  border-right-width: 0.75px;
 }
 #btn-right {
-  left: 132px; /* 24 + 84 + 24 gap */
+  border-radius: 6px 36px 36px 6px; /* rounded outer (right) edge, flat inner seam */
+  border-left-width: 0.75px;
 }
 
-/* Jump bottom-right. */
+/* Jump: the primary action — a larger circle, bottom-right, with a warm gold accent. */
 #btn-jump {
-  right: 24px;
+  bottom: calc(22px + env(safe-area-inset-bottom, 0px));
+  right: calc(22px + env(safe-area-inset-right, 0px));
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  font-size: 40px;
+  background: rgba(212, 175, 55, 0.26); /* hint of gold so it reads as "the action" */
 }
 
 @media (pointer: coarse) {
-  #touch-controls {
+  body.playing #touch-controls {
     display: block;
   }
 }
@@ -140,7 +175,7 @@ body {
 #audio-toggle,
 #music-toggle {
   position: fixed;
-  top: 16px;
+  top: calc(16px + env(safe-area-inset-top, 0px)); /* clear the iOS status bar / notch */
   width: 54px;
   height: 54px;
   border: none;
@@ -160,10 +195,10 @@ body {
   transition: transform 0.08s ease, background 0.12s ease, opacity 0.12s ease;
 }
 #audio-toggle {
-  right: 16px;
+  right: calc(16px + env(safe-area-inset-right, 0px));
 }
 #music-toggle {
-  right: 80px; /* one button-width + gap to the left of the SFX toggle */
+  right: calc(80px + env(safe-area-inset-right, 0px)); /* one button-width + gap left of SFX */
 }
 #audio-toggle:hover,
 #music-toggle:hover {
@@ -178,6 +213,132 @@ body {
   opacity: 0.4; /* clearly "off" — and the only cue for 🎵, whose glyph doesn't change */
 }
 
+/* --- Pause button (top-left) ------------------------------------------------
+   Same circular style as the audio toggles, mirrored to the left. Shown only during
+   gameplay (body.playing); the in-canvas HUD name/level are nudged right to clear it. */
+#pause-toggle {
+  position: fixed;
+  top: calc(16px + env(safe-area-inset-top, 0px));
+  left: calc(16px + env(safe-area-inset-left, 0px));
+  width: 54px;
+  height: 54px;
+  border: none;
+  border-radius: 50%;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  color: #fff8f0;
+  background: rgba(38, 50, 92, 0.55);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+  z-index: 8; /* above canvas + touch layer, below the modals */
+  display: none; /* revealed only during gameplay */
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.08s ease, background 0.12s ease;
+}
+body.playing #pause-toggle {
+  display: flex;
+}
+#pause-toggle:hover {
+  background: rgba(38, 50, 92, 0.75);
+}
+#pause-toggle:active {
+  transform: scale(0.92);
+}
+
+/* Pause card: a heading + a column of full-width buttons. */
+.pause-title {
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.pause-card .ui-btn {
+  display: block;
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* Settings card: labelled volume sliders + a full-width close button. */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  font-size: 18px;
+}
+.setting-row span {
+  flex: none;
+  min-width: 96px;
+  text-align: left;
+}
+.setting-row input[type="range"] {
+  flex: 1;
+  accent-color: #d4af37; /* royal gold to match the buttons */
+  height: 6px;
+  cursor: pointer;
+}
+.settings-card .ui-btn {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+}
+/* Destructive "Cancella i progressi" while armed (second tap confirms). */
+.ui-btn.danger-armed {
+  background: #c2410c; /* warm warning orange */
+  color: #fff8f0;
+  opacity: 1;
+}
+
+/* --- iOS "Aggiungi a Home" hint ---------------------------------------------
+   Small dismissible banner (top-centre, clear of the status bar) nudging PWA install for
+   true fullscreen on iPhone. Shown/hidden by src/ui/installHint.js (iOS Safari only). */
+#install-hint {
+  position: fixed;
+  /* Bottom-centre: clear of the menu title/HUD up top, and it sits between the bottom-corner
+     touch controls in gameplay (it also auto-dismisses — see src/ui/installHint.js). */
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100% - 32px));
+  padding: 10px 14px;
+  background: rgba(38, 50, 92, 0.92);
+  color: #fff8f0;
+  border: 1px solid rgba(212, 175, 55, 0.6); /* gold edge */
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  font-family: "PixelifySans", sans-serif;
+  font-size: 15px;
+  line-height: 1.3;
+  text-align: center;
+  z-index: 9; /* above the canvas + audio toggles, below the modals (20+) */
+  animation: overlay-in 0.2s ease-out;
+}
+#install-hint[hidden] {
+  display: none;
+}
+.install-text {
+  flex: 1;
+}
+#install-close {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 248, 240, 0.18);
+  color: #fff8f0;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
 /* --- Shared DOM overlays (Insert Coin §1, Receipt §2) -----------------------
    Full-screen scrim that centres a card over the canvas. Toggled via [hidden]. */
 .overlay {
@@ -189,7 +350,7 @@ body {
   padding: 24px;
   background: rgba(20, 24, 47, 0.8); /* deep-blue scrim over the frozen game */
   z-index: 20;
-  font-family: sans-serif;
+  font-family: "PixelifySans", sans-serif;
   -webkit-tap-highlight-color: transparent;
   animation: overlay-in 0.18s ease-out;
 }

@@ -48,6 +48,47 @@
     <button id="music-toggle" type="button" aria-label="Disattiva musica">🎵</button>
     <button id="audio-toggle" type="button" aria-label="Disattiva effetti">🔊</button>
 
+    <!-- Pause button (top-left), shown only during gameplay (body.playing). Works on
+         keyboard (ESC) and touch alike; wired in src/scenes/game.js. -->
+    <button id="pause-toggle" type="button" aria-label="Pausa">⏸</button>
+
+    <!-- iOS-only "Add to Home" hint. iPhone Safari tabs can't go true fullscreen, so the
+         installed PWA is the way; shown + dismissed by src/ui/installHint.js. -->
+    <div id="install-hint" hidden>
+      <span class="install-text">📲 Aggiungi a Home per giocare a schermo intero</span>
+      <button id="install-close" type="button" aria-label="Chiudi suggerimento">✕</button>
+    </div>
+
+    <!-- Pause menu overlay. DOM, not Kaplay; shown/wired by src/ui/pauseMenu.js while the
+         game scene freezes the world (k.getTreeRoot().paused). -->
+    <div id="pause-overlay" class="overlay" hidden>
+      <div class="overlay-card pause-card">
+        <p class="pause-title">In pausa</p>
+        <button id="pause-resume" type="button" class="ui-btn">Riprendi</button>
+        <button id="pause-settings" type="button" class="ui-btn ghost-btn">Impostazioni</button>
+        <button id="pause-restart" type="button" class="ui-btn ghost-btn">Ricomincia il livello</button>
+        <button id="pause-menu" type="button" class="ui-btn ghost-btn">Torna al menu</button>
+      </div>
+    </div>
+
+    <!-- Settings overlay (volume sliders). DOM; shown by src/ui/settings.js from the main
+         menu and from the pause menu. Placed after #pause-overlay so it stacks above it. -->
+    <div id="settings-overlay" class="overlay" hidden>
+      <div class="overlay-card settings-card">
+        <p class="pause-title">Impostazioni</p>
+        <label class="setting-row">
+          <span>Musica</span>
+          <input id="set-music-vol" type="range" min="0" max="100" step="1" aria-label="Volume musica" />
+        </label>
+        <label class="setting-row">
+          <span>Effetti</span>
+          <input id="set-sfx-vol" type="range" min="0" max="100" step="1" aria-label="Volume effetti" />
+        </label>
+        <button id="settings-reset" type="button" class="ui-btn ghost-btn">Cancella i progressi</button>
+        <button id="settings-close" type="button" class="ui-btn">Chiudi</button>
+      </div>
+    </div>
+
     <!-- "Insert Coin" death overlay (spec §1). DOM, not Kaplay; shown by
          src/ui/insertCoin.js when the heroine fails. -->
     <div id="coin-overlay" class="overlay" hidden>

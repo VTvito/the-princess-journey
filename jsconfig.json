@@ -1,0 +1,16 @@
+{
+  "//": "LSP code-intelligence for this no-build JS project: reliable cross-file go-to-definition, find-references, rename and hover, plus correct ES-module/DOM resolution. checkJs is OFF by default because Kaplay ships no types and the code is dynamically shaped, so full type-checking infers false mismatches from the minified engine. To opt into stricter diagnostics later, set checkJs:true and add Kaplay typings/JSDoc — the non-standard globals are already declared in types/globals.d.ts.",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": false,
+    "module": "esnext",
+    "target": "esnext",
+    "moduleResolution": "bundler",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "noEmit": true,
+    "strict": false,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.js", "types/**/*.d.ts"],
+  "exclude": ["node_modules", "vendor", "assets", "tools"]
+}

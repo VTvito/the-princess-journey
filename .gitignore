@@ -15,6 +15,11 @@ tools/test/*.png
 __pycache__/
 *.py[cod]
 
+# --- Secrets (LOCAL ONLY — never commit) ---
+# Holds VERCEL_TOKEN for `npm run deploy`. See README "Deploy".
+.env
+.env.*
+
 # --- Personal / local config (machine-specific; not shared) ---
 .claude/settings.local.json
 
@@ -27,3 +32,5 @@ __pycache__/
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+.vercel
