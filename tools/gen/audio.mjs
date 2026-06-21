@@ -156,7 +156,7 @@ export function buildFinaleMusic() {
   const lead = [
     ["E5", 2], ["D5", 1], ["C5", 2], ["E5", 1], ["G5", 3],
     ["F5", 2], ["E5", 1], ["D5", 3], ["E5", 2], ["C5", 1], ["A4", 3],
-    ["C5", 2], ["D5", 1], ["E5", 2], ["G5", 1], ["A5", 3],
+    ["C5", 2], ["D5", 1], ["E5", 2], ["G5", 1], ["A4", 3],
     ["G5", 2], ["E5", 1], ["D5", 2], ["B4", 1], ["C5", 6],
   ];
   const harmony = [
@@ -215,14 +215,15 @@ export function buildCoralMusic() {
     ["A4", 3], ["G4", 3], ["A4", 6],
   ];
   const arp = rep(5, [
-    [null, 1], ["E5", 0.5], ["A5", 0.5], [null, 2], ["C6", 0.5], ["A5", 0.5], [null, 3],
+    // Brought the sparkle down a step from the old C6 top so it shimmers without piercing.
+    [null, 1], ["E5", 0.5], ["A5", 0.5], [null, 2], ["A5", 0.5], ["E5", 0.5], [null, 3],
   ]);
   const bass = rep(2, [["A2", 8], ["F2", 8], ["C3", 8], ["E2", 8]]);
   return song({
     bpm: 76,
     tracks: [
       { notes: lead, wave: "sine", vol: 0.4, decay: 0.7 },
-      { notes: arp, wave: "sine", vol: 0.14, decay: 5 },
+      { notes: arp, wave: "sine", vol: 0.11, decay: 5 },
       { notes: bass, wave: "tri", vol: 0.24, decay: 0.4 },
     ],
     air: 0.34,
@@ -244,7 +245,9 @@ export function buildRooftopsMusic() {
   return song({
     bpm: 112,
     tracks: [
-      { notes: lead, wave: "square", vol: 0.16, decay: 2.2 },
+      // Warm voicing: the old thin square top sounded metallic, so the lead is now a soft
+      // sine sheen over a triangle body (no harsh odd-harmonic edge).
+      { notes: lead, wave: "sine", vol: 0.14, decay: 2.2 },
       { notes: lead, wave: "tri", vol: 0.3, decay: 2.2 }, // doubled an octave-equal for body
       { notes: drone, wave: "tri", vol: 0.18, decay: 0.3 },
     ],
@@ -257,19 +260,21 @@ export function buildRooftopsMusic() {
 
 // Snow: a tiny music box (3/4) — high bell-like sines with fast decay, very sparse. ~24s.
 export function buildSnowMusic() {
+  // Dropped a full octave from the old C6-topped melody — the previous register sounded
+  // shrill / "shot upward"; this sits in a cosier music-box range.
   const lead = [
-    ["E5", 1], ["G5", 1], ["C6", 1], ["B5", 2], ["G5", 1],
-    ["A5", 1], ["G5", 1], ["E5", 1], ["D5", 3],
-    ["E5", 1], ["G5", 1], ["A5", 1], ["G5", 2], ["E5", 1],
-    ["D5", 1], ["E5", 1], ["C5", 1], ["C5", 3],
-    [null, 3], ["E5", 1], ["D5", 1], ["C5", 1],
-    ["D5", 1], ["E5", 1], ["G5", 1], ["E5", 3],
+    ["E4", 1], ["G4", 1], ["C5", 1], ["B4", 2], ["G4", 1],
+    ["A4", 1], ["G4", 1], ["E4", 1], ["D4", 3],
+    ["E4", 1], ["G4", 1], ["A4", 1], ["G4", 2], ["E4", 1],
+    ["D4", 1], ["E4", 1], ["C4", 1], ["C4", 3],
+    [null, 3], ["E4", 1], ["D4", 1], ["C4", 1],
+    ["D4", 1], ["E4", 1], ["G4", 1], ["E4", 3],
   ];
   const bass = rep(5, [["C3", 1], ["G3", 1], ["E3", 1], ["A2", 1], ["E3", 1], ["C3", 1]]);
   return song({
     bpm: 100,
     tracks: [
-      { notes: lead, wave: "sine", vol: 0.4, decay: 4.5 },
+      { notes: lead, wave: "sine", vol: 0.4, decay: 3.2 },
       { notes: bass, wave: "sine", vol: 0.2, decay: 2.5 },
     ],
     air: 0.3,
@@ -328,7 +333,9 @@ export function buildCastleMusic() {
   return song({
     bpm: 100,
     tracks: [
-      { notes: lead, wave: "square", vol: 0.13, decay: 1.8 },
+      // Regal but not tinny: the fanfare top is a sine sheen instead of the old square,
+      // letting the triangle body carry the melody warmly.
+      { notes: lead, wave: "sine", vol: 0.12, decay: 1.8 },
       { notes: lead, wave: "tri", vol: 0.3, decay: 1.8 },
       { notes: harmony, wave: "sine", vol: 0.18, decay: 0.8 },
       { notes: bass, wave: "tri", vol: 0.26, decay: 0.9 },
