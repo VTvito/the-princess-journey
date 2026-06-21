@@ -28,7 +28,7 @@ import {
   getScore,
 } from "../state.js";
 import { bindKeyboard, resetInput } from "../controls.js";
-import { makePlayer } from "../entities/player.js";
+import { makePlayer, addSkinLayers, syncSkins } from "../entities/player.js";
 import { getLevelDef, hasLevel } from "../levels/index.js";
 import { buildLevel } from "../levels/build.js";
 import { showInsertCoin, hideInsertCoin } from "../ui/insertCoin.js";
@@ -630,16 +630,47 @@ function showReward(reward, got, total, icon, nextLevel) {
   ]);
   k.add([
     k.text("Livello completato!", { size: 50 }),
-    k.pos(GAME_W / 2, GAME_H / 2 - 110),
+    k.pos(GAME_W / 2, GAME_H / 2 - 210),
     k.anchor("center"),
     k.color(...PALETTE.cream),
     k.fixed(),
     k.z(81),
   ]);
   if (reward) {
+    // The unlock as a *reveal*, not a line of text: a golden spotlight with the heroine
+    // standing in it, already wearing the skin she just earned (every layer unlocked so
+    // far, the newest on top). Mirrors the finale avatar (src/scenes/finale.js).
+    const heroY = GAME_H / 2 - 40;
+    for (const [radius, alpha] of [[132, 0.1], [96, 0.13], [64, 0.17]]) {
+      k.add([
+        k.circle(radius),
+        k.pos(GAME_W / 2, heroY),
+        k.anchor("center"),
+        k.color(...PALETTE.gold),
+        k.opacity(alpha),
+        k.fixed(),
+        k.z(81),
+      ]);
+    }
+    const char = CHARACTERS.find((c) => c.id === getSelectedCharacter()) || CHARACTERS[0];
+    const hero = k.add([
+      k.sprite(char.sprite),
+      k.pos(GAME_W / 2, heroY),
+      k.anchor("center"),
+      k.scale(1.9),
+      k.fixed(),
+      k.z(82),
+    ]);
+    hero.skinLayers = addSkinLayers(hero, unlockedSkinKeys(nextLevel));
+    hero.play("celebrate"); // arms up in the spotlight
+    hero.onUpdate(() => {
+      hero.pos.y = heroY + Math.sin(k.time() * 1.5) * 5; // gentle bob
+      syncSkins(hero); // children share the sheet frame but don't animate on their own
+    });
+
     k.add([
       k.text("Hai sbloccato:", { size: 26 }),
-      k.pos(GAME_W / 2, GAME_H / 2 - 40),
+      k.pos(GAME_W / 2, GAME_H / 2 + 70),
       k.anchor("center"),
       k.color(...PALETTE.cream),
       k.opacity(0.9),
@@ -648,7 +679,7 @@ function showReward(reward, got, total, icon, nextLevel) {
     ]);
     k.add([
       k.text(reward.name, { size: 38 }),
-      k.pos(GAME_W / 2, GAME_H / 2 + 2),
+      k.pos(GAME_W / 2, GAME_H / 2 + 110),
       k.anchor("center"),
       k.color(...PALETTE.gold),
       k.fixed(),
@@ -658,7 +689,7 @@ function showReward(reward, got, total, icon, nextLevel) {
   k.add([
     // sans-serif: contains the collectible emoji + ★, neither of which the pixel font has.
     k.text(`${icon} ${got}/${total}    ★ ${getScore()}`, { size: 26, font: "sans-serif" }),
-    k.pos(GAME_W / 2, GAME_H / 2 + 56),
+    k.pos(GAME_W / 2, GAME_H / 2 + 160),
     k.anchor("center"),
     k.color(...PALETTE.cream),
     k.opacity(0.9),
@@ -675,7 +706,7 @@ function showReward(reward, got, total, icon, nextLevel) {
 
   const btn = k.add([
     k.rect(320, 78, { radius: 14 }),
-    k.pos(GAME_W / 2, GAME_H / 2 + 140),
+    k.pos(GAME_W / 2, GAME_H / 2 + 230),
     k.anchor("center"),
     k.area(),
     k.color(...PALETTE.gold),
@@ -697,7 +728,7 @@ function showReward(reward, got, total, icon, nextLevel) {
   if (toFinale) {
     k.add([
       k.text("La tua storia ti aspetta...", { size: 18 }),
-      k.pos(GAME_W / 2, GAME_H / 2 + 196),
+      k.pos(GAME_W / 2, GAME_H / 2 + 288),
       k.anchor("center"),
       k.color(...PALETTE.cream),
       k.opacity(0.7),

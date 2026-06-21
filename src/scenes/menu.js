@@ -250,12 +250,16 @@ export function registerMenuScene() {
         k.opacity(0.8),
       ]);
 
+      // Focus = "she steps forward": the hovered heroine breaks into her walk cycle and the
+      // card lifts a touch, so picking a character feels like meeting her, not reading a card.
       card.onHover(() => {
-        card.scale = k.vec2(1.04);
+        card.scale = k.vec2(1.06);
+        heroSprite.play("run");
         k.setCursor("pointer");
       });
       card.onHoverEnd(() => {
         card.scale = k.vec2(1);
+        heroSprite.play("idle");
         k.setCursor("default");
       });
 
