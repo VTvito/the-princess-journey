@@ -246,7 +246,7 @@ function makeSpring(x, y, TILE) {
   const art = spring.add([k.sprite("spring"), k.anchor("bot"), k.pos(TILE * 0.35, TILE * 0.6)]);
   spring.onCollide("player", (p) => {
     if (p.pos.y > spring.pos.y) return; // only a bounce when she lands on the cap
-    p.vel.y = -MECHANICS.SPRING_VEL;
+    p.bounce(MECHANICS.SPRING_VEL); // full, reliable launch (disarms the variable-height cut)
     p.squashX = 0.8; // extra-tall stretch on the way up
     p.squashY = 1.3;
     art.play("bounce");

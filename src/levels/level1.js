@@ -76,11 +76,13 @@ export const LEVEL_1 = {
     ],
     platforms: [
       { x: 46, y: LANE, w: 2 }, // stepping-bridge over the develop ravine
-      { x: 27, y: 7, w: 3 }, // bonus perch above the first spring
     ],
-    // One-way high routes: the twist route (launched onto by the spring at x52, carries
-    // her over both ravines), then the secret CANOPY (spring at x72) with its apple trail.
+    // One-way high routes: the bonus perch (the spring at x29 launches her UP THROUGH it and
+    // she lands on top — a solid slab here would block the bounce from below), the twist route
+    // (launched onto by the spring at x52, carries her over both ravines), then the secret
+    // CANOPY (spring at x72) with its apple trail.
     semisolids: [
+      { x: 27, y: 7, w: 3 }, // bonus perch above the first spring (one-way, so the bounce lands)
       { x: 52, y: 7, w: 10 },
       { x: 70, y: 7, w: 12 }, // the canopy — drops back to the lane at x82
     ],
@@ -97,7 +99,7 @@ export const LEVEL_1 = {
       { x: 88, y: LANE, ch: "F" },
       // Thorns: one per stretch, clear of ravine edges, spring landings and the canopy drop.
       { x: 12, y: LANE, ch: "^" },
-      { x: 36, y: LANE, ch: "^" },
+      { x: 42, y: LANE, ch: "^" }, // moved off the x29 spring's (now higher) bounce landing
       { x: 76, y: LANE, ch: "^" },
       { x: 98, y: 10, ch: "^" }, // on the first terrace's surface
       // Star power-up on the lane: a taste of invincibility before the twist.

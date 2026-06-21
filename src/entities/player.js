@@ -186,6 +186,15 @@ export function makePlayer(char, pos, skinKeys = [], feel = {}) {
     syncSkins(player);
   });
 
+  // Spring bounce: launch upward at a fixed velocity. Crucially it disarms the variable-
+  // height jump-cut (jumpCut = true) so releasing the jump button right after a bounce can
+  // NOT halve the launch — a spring must always give its full, reliable height regardless of
+  // how the heroine arrived on it. Called by the spring mushroom (src/levels/build.js).
+  player.bounce = (vy) => {
+    player.vel.y = -vy;
+    jumpCut = true;
+  };
+
   return player;
 }
 
