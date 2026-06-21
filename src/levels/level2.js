@@ -99,6 +99,7 @@ export const LEVEL_2 = {
       { x: 60, y: LANE, ch: "^" },
       { x: 104, y: LANE, ch: "^" },
       // Crabs patrolling the stretches between set-pieces.
+      { x: 8, y: LANE, ch: "c" }, // a crab on the intro flat (clear of the x20 gap)
       { x: 30, y: LANE, ch: "c" },
       { x: 52, y: LANE, ch: "c" },
       { x: 76, y: LANE, ch: "c" },

@@ -64,6 +64,7 @@ export const LEVEL_1 = {
     width: 120,
     height: H,
     ravines: [
+      { x: 16, w: 2 }, // intro: an early warm-up gap (a second hop before the bigger one)
       { x: 22, w: 2 }, // intro: one clean, jumpable gap
       { x: 46, w: 2 }, // develop: bridged at the lane (landing practice)
       { x: 58, w: 2 }, // twist: double gap crossed on the high route
@@ -97,6 +98,11 @@ export const LEVEL_1 = {
       { x: 49, y: LANE, ch: "F" },
       { x: 68, y: LANE, ch: "F" },
       { x: 88, y: LANE, ch: "F" },
+      // Forest critters: a couple of ground crabs and a circling crow — the enchanted wood
+      // isn't empty anymore. Placed on flat stretches, clear of jump arcs and the canopy drop.
+      { x: 7, y: LANE, ch: "c" }, // greets her just past the spawn
+      { x: 64, y: LANE, ch: "c" }, // patrols before the canopy
+      { x: 32, y: AIR, ch: "f" }, // a crow over the develop stretch
       // Thorns: one per stretch, clear of ravine edges, spring landings and the canopy drop.
       { x: 12, y: LANE, ch: "^" },
       { x: 42, y: LANE, ch: "^" }, // moved off the x29 spring's (now higher) bounce landing

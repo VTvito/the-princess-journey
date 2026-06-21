@@ -86,10 +86,11 @@ export const LEVEL_5 = {
       ...[40, 41, 42, 43].flatMap((x) => [8, 9, 10, 11].map((y) => ({ x, y, ch: "B" }))),
       ...[88, 89, 90, 91, 92].flatMap((x) => [7, 8, 9, 10, 11].map((y) => ({ x, y, ch: "B" }))),
       // Checkpoints: clean run-up ahead of each (no hazard within ~4 cells, no springs).
+      // Thinned out (a death now costs more progress): the pre-climb x100 flag is gone, so
+      // the climax glide is banked only at x84.
       { x: 34, y: LANE, ch: "F" },
       { x: 56, y: LANE, ch: "F" },
       { x: 84, y: LANE, ch: "F" },
-      { x: 100, y: LANE, ch: "F" },
       // Rose-thorn tangles: intro, terrace edges (room to accelerate), pre-climb.
       { x: 12, y: LANE, ch: "^" },
       { x: 29, y: 10, ch: "^" }, // far edge of the intro hedge

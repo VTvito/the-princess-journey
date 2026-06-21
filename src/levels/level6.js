@@ -103,11 +103,12 @@ export const LEVEL_6 = {
       { x: 86, y: 7, ch: "o" },
       { x: 87, y: 7, ch: "o" },
       // Checkpoints: clean run-up ahead of each (the pendulum lessons of L1-4).
+      // Thinned out: the doubled-up x96 flag is gone, so the gauntlet + staircase are banked
+      // only at x90 — surviving the final approach now means more on the line.
       { x: 22, y: LANE, ch: "F" },
       { x: 40, y: LANE, ch: "F" },
       { x: 66, y: LANE, ch: "F" },
       { x: 90, y: LANE, ch: "F" },
-      { x: 96, y: LANE, ch: "F" },
       // Steel spike racks on the flagstones.
       { x: 12, y: LANE, ch: "^" },
       { x: 46, y: LANE, ch: "^" },

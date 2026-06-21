@@ -102,6 +102,8 @@ export const LEVEL_3 = {
       { x: 78, y: LANE, ch: "F" },
       // Broken-tile spikes: street, both roofs, and the post-ridge landing zone.
       { x: 12, y: LANE, ch: "^" },
+      { x: 20, y: LANE, ch: "^" }, // a second street spike before the first climb
+
       { x: 26, y: 10, ch: "^" }, // on the first roof's surface
       { x: 43, y: 9, ch: "^" }, // on the second roof's edge — room to accelerate after the climb
       { x: 58, y: LANE, ch: "^" },
