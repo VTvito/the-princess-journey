@@ -234,7 +234,8 @@ guardian that enrages on a stomp) and the **feather** (`+`, a high-jump power-up
 routes). See `src/levels/mapkit.js` + `build.js` for the full legend and `MECHANICS` / `POWERUP`
 in `src/config.js` for the tunables.
 
-- **Livello 1 — Foresta Incantata**: a clear running lane, ravines, brambles, golden apples.
+- **Livello 1 — Foresta Incantata**: a running lane, ravines, brambles, **forest critters**
+  (patrolling crabs + a circling crow), golden apples.
 - **Livello 2 — Abissi di Corallo**: coral floor, sea-urchin hazards, **patrolling crabs**, pearls.
 - **Livello 3 — Tetti d'Oriente**: pagoda rooftops at dusk, **flying obstacles**, lanterns.
 - **Livello 4 — Cime Innevate**: snowy peaks, **stalactites** that drop and reset, crystals.
@@ -245,8 +246,9 @@ in `src/config.js` for the tunables.
 
 Touching a hazard or enemy, or falling into a ravine, shows the Insert-Coin overlay and
 respawns you (from the last checkpoint, if any). On reaching the goal, a **reward screen**
-unlocks the next clothing layer and continues to the next level. Clearing **Livello 6** leads
-to the finale (the non-playable level 7).
+reveals the heroine in a golden spotlight wearing the freshly unlocked clothing layer, then
+continues to the next level. Clearing **Livello 6** leads to the finale (the non-playable
+level 7).
 
 ## Saving & resuming
 
@@ -294,7 +296,8 @@ collision logic in `game.js`:
 - **Pause & settings.** Esc / ⏸ freezes the game (`k.getTreeRoot().paused`) behind a DOM
   overlay; settings (volume + reset progress) is reachable from the menu and the pause screen.
 - **Living menu.** The title screen reuses the garden parallax backdrop with drifting petals and
-  a breathing heroine preview, instead of a flat panel.
+  a breathing heroine preview; on the character chooser, the hovered card breaks into her walk
+  cycle, so picking a heroine feels like meeting her.
 - **Offline / PWA.** A service worker ([`sw.js`](sw.js)) caches the shell + assets so the game
   plays offline after the first visit and installs as a standalone app (manifest in place).
 - **Quality of life.** CSS fade between scenes, instant press feedback on the touch buttons.

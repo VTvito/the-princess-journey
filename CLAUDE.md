@@ -51,6 +51,18 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
   (`src/ui/pauseMenu.js`, settings stacks above via `src/ui/settings.js`) so its buttons stay
   clickable while the world is frozen. Every exit (resume/restart/menu) unfreezes first, and the
   game scene resets `paused = false` on entry — never leak a paused tree into another scene.
+- **Springs target semisolids, not solids:** a spring (`makeSpring`, `src/levels/build.js`)
+  launches the heroine straight up via `player.bounce()`, which also **disarms the variable-
+  height jump-cut** so the bounce is always its full height. The platform it lifts onto must be
+  a one-way **semisolid** (`#`), never a solid `platforms` slab — a solid slab over a spring
+  blocks the bounce from below (she bonks its underside). A reliable, higher arc also overshoots
+  farther, so keep the bounce-landing clear of hazards.
+- **Difficulty lives in level data, not enemy speed:** `ENEMIES` speeds are tightly coupled to
+  the autoplay bot's hop timing — bumping `CRAB_SPEED`/`FLY_SPEED` globally death-loops the bot
+  at existing crab+thorn+gap clusters (`test:play` fails, often flaky-looking). Tune difficulty
+  per-level instead: add enemies/hazards on flat stretches **clear of jump arcs and patrol
+  ranges**, add 2-cell gaps (never >2 on the critical path — the bot can't single-jump wider),
+  thin out checkpoints. Re-run `test:play` per level after each change.
 - **Service worker is prod-only:** `sw.js` is registered in `src/main.js` **only off localhost**,
   so it never caches stale files between Playwright runs / dev edits. On a real content change,
   bump `CACHE` in `sw.js` so clients fetch fresh.
