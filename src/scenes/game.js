@@ -73,17 +73,10 @@ export function registerGameScene() {
     // Reveal the on-screen touch controls (CSS shows them only while body.playing).
     document.body.classList.add("playing");
 
-    // Dev autoplay hook (tools/test/play.mjs): reset the per-level goal flag on entry.
-    // `deaths` is cumulative across retries (the bot zeroes it before a run). No-op off
-    // localhost, where window.__pj is never attached (see main.js).
-    const dbg = (typeof window !== "undefined" && window.__pj && window.__pj.debug) || null;
-    if (dbg) dbg.reachedGoal = false;
-
     const charId = getSelectedCharacter();
     const char = CHARACTERS.find((c) => c.id === charId) || CHARACTERS[0];
     const level = getCurrentLevel();
     const def = getLevelDef(level);
-    if (dbg) dbg.botHints = def.bot?.hints || []; // set-piece hints for the autoplay bot
     const theme = def.theme;
     const icon = theme.collectibleIcon || "🍎";
     const hudColor = theme.hudText || PALETTE.cream; // some themes (snow) need dark text
@@ -151,7 +144,6 @@ export function registerGameScene() {
     function die() {
       if (finished || dead) return;
       dead = true;
-      if (dbg) dbg.deaths += 1;
       player.setAnim("hurt"); // the "ops" face — set before pausing freezes updates
       player.paused = true; // freeze the heroine behind the overlay
       sfx("oops"); // gentle "you slipped" cue (no harsh game-over)
@@ -299,8 +291,8 @@ export function registerGameScene() {
     }
 
     // Feather power-up: grant a high-jump window + points, with a cool aura trailing her.
-    // Re-grabbing simply refreshes the timer. Placed off the critical path, so the autoplay
-    // bot never picks one up and jumpMul stays 1 for it.
+    // Re-grabbing simply refreshes the timer. Placed off the critical path, so it's always
+    // an optional pickup (jumpMul stays 1 if she never grabs one).
     player.onCollide("feather", (f) => {
       if (finished || dead) return;
       confettiBurst(f.pos, [PALETTE.cream, theme.collectibleGlow || PALETTE.gold, [200, 224, 248]]);
@@ -438,7 +430,6 @@ export function registerGameScene() {
       if (finished || dead) return;
       finished = true;
       checkpointAt = null; // the journey continues — next level starts clean
-      if (dbg) dbg.reachedGoal = true;
       player.setAnim("celebrate"); // arms up while the reward card shows
       sfx("goal"); // triumphant arpeggio on clearing the level
       // The last chapter's doors deserve fireworks: staggered confetti around her.

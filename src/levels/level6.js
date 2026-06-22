@@ -80,7 +80,7 @@ export const LEVEL_6 = {
       { x: 112, w: 14, h: 3 },
     ],
     // Chandelier mounts (the ceiling slab each chain hangs from). They sit 3+ cells above
-    // the walkers — outside the bot's step probe — and stay solid (no head-room conflict).
+    // the walking line — well out of jump reach — and stay solid (no head-room conflict).
     platforms: [
       { x: 32, y: 7, w: 1 }, // mount, chandelier 1
       { x: 80, y: 7, w: 1 }, // mount, chandelier 2
@@ -120,22 +120,21 @@ export const LEVEL_6 = {
       { x: 96, y: LANE, ch: "^" }, // on the flat approach to the grand staircase (banked at x90)
       { x: 101, y: LANE, ch: "^" },
       // A bat over the hall (kept clear of ravine jump-arcs and chandelier hop zones —
-      // an air enemy there either kills the arc or vetoes the bot's needed hop).
+      // an air enemy there either kills the arc or blocks a needed hop).
       { x: 50, y: AIR, ch: "f" },
       // The hall ghost between the chandeliers — an ARMORED swooper (2 hp), the last
       // guardian to soften you up before the Gargoyle. Same flight as a ghost, so it stays
-      // bot-passable between dives. (No ghost over the staircase: an air enemy above a
-      // required step-up jump deadlocks the bot's hop — the L3 lesson. Chandelier 3 guards
-      // the climb instead.)
+      // passable between dives. (No ghost over the staircase: an air enemy above a required
+      // step-up jump can deadlock the climb — the L3 lesson. Chandelier 3 guards the climb
+      // instead.)
       { x: 72, y: 8, ch: "S" },
       // The Gargoyle Custode, hovering over the last stretch before the doors (the
-      // staircase top is flat — no required jump under it, so the bot can sneak past
+      // staircase top is flat — no required jump under it, so she can sneak past
       // between dives).
       { x: 122, y: 4, ch: "G" },
-      // Star power-up before the gauntlet — blow through chandelier 2 invincible. Load-bearing
-      // for reachability: pendulum 2 + the armored ghost is a timing gate the autoplay bot can't
-      // thread unaided (it death-loops here without it). Kept by design, but its window is now
-      // shorter (POWERUP.DURATION 7→5s) so it's far less of a "win button" for a human.
+      // Star power-up before the gauntlet — blow through chandelier 2 invincible. A welcome
+      // out for the hardest timing gate (pendulum 2 + the armored ghost), but its window is
+      // short (POWERUP.DURATION 5s) so it's a breather, not a "win button".
       { x: 74, y: LANE, ch: "*" },
       ...arcCollectibles([6, 15, 26, 38, 44, 54, 68, 76, 86, 94], [AIR, LANE - 1]),
       // Goblets up the staircase.

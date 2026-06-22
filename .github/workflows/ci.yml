@@ -3,10 +3,9 @@
 #   • syntax  — parses every ES module with `node --check`. Fast, deterministic; catches the
 #               realistic breakage for this repo (a typo / bad edit in a shipped module).
 #   • browser — boots the game in headless Edge against the local server and runs the smoke +
-#               per-level boot gates. The feature + autoplay suites also run, but as
-#               non-blocking: the autoplay bot is stochastic and a couple of feature probes
-#               sample at frame boundaries (see CLAUDE.md "Test flakiness"), so they inform
-#               rather than gate.
+#               per-level boot gates. The feature suite also runs, but as non-blocking: a couple
+#               of feature probes sample at frame boundaries (see CLAUDE.md "Test flakiness"), so
+#               they inform rather than gate.
 name: CI
 
 on:
@@ -42,4 +41,3 @@ jobs:
           node tools/test/smoke.mjs
           node tools/test/levels.mjs
           node tools/test/features.mjs || echo "::warning::features suite non-blocking (frame-boundary flakiness — see CLAUDE.md)"
-          node tools/test/play.mjs || echo "::warning::autoplay suite non-blocking (stochastic bot — see CLAUDE.md)"

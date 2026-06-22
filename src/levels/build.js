@@ -18,7 +18,7 @@
 // (cells; dx/dy = travel amplitude in cells) — see makeMover.
 
 import { k } from "../kaplayCtx.js";
-import { PALETTE, ENEMIES, HAZARDS, MECHANICS, PHYSICS } from "../config.js";
+import { PALETTE, ENEMIES, HAZARDS, MECHANICS, PHYSICS, GAME_W } from "../config.js";
 import { sfx } from "../sfx.js";
 
 // Cached heroine reference shared by the enemy-AI updates below. `k.get("player")` scans the
@@ -169,7 +169,7 @@ export function buildLevel(def) {
 
   // Decor props: collider-free scenery. Procedural dressing on the ground tops collected
   // above, plus authored hero placements (def.decor, data-driven like movers) — a tree
-  // framing the goal, lanterns flanking a checkpoint. Neither touches gameplay or the bot.
+  // framing the goal, lanterns flanking a checkpoint. Neither touches gameplay or collision.
   placeDecorProps(theme, decorSpots, TILE);
   for (const d of def.decor || []) {
     makeDecorProp(d.key, (d.x + 0.5) * TILE, (d.y + 1) * TILE, !!d.fg);
@@ -250,8 +250,8 @@ function makeSemisolid(x, y, TILE, theme) {
   return slab;
 }
 
-// --- Spring mushroom: auto-bounce on contact from above — no button needed, so it works
-// identically for a casual human and the autoplay bot. Launches higher than a jump.
+// --- Spring mushroom: auto-bounce on contact from above — no button needed; it fires the
+// moment she lands on the cap. Launches higher than a jump.
 function makeSpring(x, y, TILE) {
   const spring = k.add([
     k.rect(TILE * 0.7, TILE * 0.6),
@@ -400,10 +400,10 @@ function makeSwooper(cx, cy, opts = {}) {
 }
 
 // --- Armored swooper (Fase 2): a 2-hp diving guardian. Same flight as a swooper — identical
-// dive arc, cooldown sneak window and hitbox — so the autoplay bot passes it exactly like a
-// regular swooper (it never stomps; it slips by during the cooldown). The only difference is
-// that it shrugs off the first stomp and ENRAGES (quicker dives), a mid-game step up toward
-// the L6 Gargoyle. Iron tint so it reads as armored.
+// dive arc, cooldown sneak window and hitbox — so it can be slipped past during the cooldown
+// without a fight (no stomp required). The only difference is that it shrugs off the first
+// stomp and ENRAGES (quicker dives), a mid-game step up toward the L6 Gargoyle. Iron tint so
+// it reads as armored.
 function makeArmoredSwooper(cx, cy) {
   return makeSwooper(cx, cy, { hp: 2, tint: [120, 135, 162] });
 }
@@ -411,8 +411,8 @@ function makeArmoredSwooper(cx, cy) {
 // --- Gargoyle Custode (Fase 5 mini-boss): a stone swooper at double size with 3 hp.
 // Same dive pattern as makeSwooper, but each stomp (handled by the game scene via the
 // hp field) makes it dive faster and rest less. Defeating it is satisfying but OPTIONAL:
-// the cooldown between dives is the sneak-past window — the same opening the autoplay
-// bot uses, so the critical path never requires the fight.
+// the cooldown between dives is the sneak-past window, so the critical path never requires
+// the fight.
 function makeGargoyle(cx, cy) {
   const gargoyle = k.add([
     k.rect(64, 56, { radius: 16 }),
@@ -429,7 +429,7 @@ function makeGargoyle(cx, cy) {
       t: 0,
       // Starts already "resting": a bold straight sprint slips past before the first
       // dive (the sneak window — hesitating or jumping for the goblets gets punished;
-      // it also keeps the guardian optional for the autoplay bot).
+      // it also keeps the guardian optional).
       cooldown: MECHANICS.SWOOP_COOLDOWN * 1.25,
       // Per-instance dive tunables — the scene shortens them on each stomp (enrage).
       swoopTime: MECHANICS.SWOOP_TIME * 1.15,
@@ -535,6 +535,11 @@ function makeUpdraft(x, y, TILE, theme) {
     "updraft",
   ]);
   k.loop(0.6, () => {
+    // Cull off-screen spawning: a level has many updraft/breeze cells, each running this
+    // loop, but only the ones near the heroine are ever visible. Skipping the spawn when the
+    // cell is well off-camera kills the object churn (and per-frame onUpdate cost) of bubbles
+    // nobody can see, with zero change to what's on screen. (See makeBreeze for the same gate.)
+    if (Math.abs(x - k.camPos().x) > GAME_W * 0.75) return;
     const b = k.add([
       k.circle(k.rand(2, 4)),
       k.pos(x + k.rand(8, TILE - 8), y + TILE),
@@ -568,6 +573,12 @@ function makeBreeze(x, y, TILE, theme) {
     "breeze",
   ]);
   k.loop(0.5, () => {
+    // Off-screen cull (Livello 5 fluidità): L5 has 41 breeze cells, each running this loop —
+    // ~80 petal objects created/destroyed per second, mostly far off-camera. Spawning only
+    // when the cell is near the view keeps the on-screen look identical while removing the GC
+    // + per-frame onUpdate load of petals nobody sees (the cost that made L5 less smooth than
+    // L6's pure-math pendulums on the 60fps-capped mobile path). Generous margin → no pop-in.
+    if (Math.abs(x - k.camPos().x) > GAME_W * 0.75) return;
     const p = k.add([
       k.rect(6, 4, { radius: 2 }),
       k.pos(x, y + k.rand(8, TILE - 8)),
@@ -623,8 +634,8 @@ function makePendulum(cx, cy, theme) {
 }
 
 // --- Moving platform: a small slab gliding on a sine path; riders are carried natively by
-// the physics (the player body sticks to the platform it stands on). Tagged "mover" so the
-// autoplay bot can wait for it at a gap's edge.
+// the physics (the player body sticks to the platform it stands on). Ride it by waiting at a
+// gap's edge for it to arrive.
 function makeMover(m, TILE, theme) {
   const w = m.w || 2;
   const base = k.vec2(m.x * TILE, m.y * TILE);
@@ -656,7 +667,7 @@ function makeMover(m, TILE, theme) {
 
 // --- Static hazard (thorns / sea urchins): a low spiky block, tagged "hazard".
 // The collider is the original invisible half-cell rect (identical hitbox + "hazard" tag +
-// top-left pos so the bot's lane probes are unchanged); the spike art is a child sprite,
+// top-left pos); the spike art is a child sprite,
 // tinted with the theme. The sprite's content occupies its lower ~48px (top is transparent),
 // so anchored to the cell bottom it matches the old spikes' visual extent.
 function makeHazard(x, y, TILE, theme) {
@@ -675,7 +686,7 @@ function makeHazard(x, y, TILE, theme) {
 // --- Collectible (golden apple / pearl): a gently bobbing pickup, tagged "collectible".
 function makeCollectible(cx, cy, theme) {
   // Collider-only invisible body: keeps the exact circle hitbox + "collectible" tag + bob
-  // state, so the pickup feel and the autoplay bot are unchanged. The art is a per-theme
+  // state, so the pickup feel is unchanged. The art is a per-theme
   // child sprite (apple/pearl/lantern/crystal), with the soft aura kept as juice.
   const item = k.add([
     k.circle(13),
@@ -807,7 +818,7 @@ function makeFeather(cx, cy) {
 // --- Crab enemy: patrols horizontally, tagged "enemy". Primitive art (no asset needed).
 function makeCrab(cx, cy, theme) {
   // Collider-only invisible body (same 40×24 hitbox + "enemy" tag + patrol state); the crab
-  // art is a child sprite. Movement logic is unchanged so the bot reads it identically.
+  // art is a child sprite.
   const crab = k.add([
     k.rect(40, 24, { radius: 11 }),
     k.opacity(0),
@@ -834,7 +845,7 @@ function makeCrab(cx, cy, theme) {
 // gentle vertical bob. Tagged "enemy" so the scene respawns the player on contact.
 function makeFlyer(cx, cy, theme) {
   // Collider-only invisible body (same 34×18 hitbox + "enemy" tag + float state); the bird
-  // art is a child sprite. Movement is unchanged so the bot's air-enemy probe is unaffected.
+  // art is a child sprite.
   const flyer = k.add([
     k.rect(34, 18, { radius: 9 }),
     k.opacity(0),

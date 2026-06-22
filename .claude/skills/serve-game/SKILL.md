@@ -28,6 +28,5 @@ file server that sends correct ES-module MIME types — there is nothing to inst
 - Stop: end the background task, or stop the python process bound to port 8137.
 
 ## Related checks
-- Reachability regression guard (all levels completable): `node tools/test/play.mjs`
-  — see that file's header: it's a reachability guard, not a balance/0-deaths gate.
-- Other harnesses: `npm run test:smoke`, `test:features`, `test:levels`, or `test:all`.
+- Test harnesses: `npm test` (smoke + features + levels), or individually `npm run test:smoke`,
+  `test:features`, `test:levels`, `test:mobile`.

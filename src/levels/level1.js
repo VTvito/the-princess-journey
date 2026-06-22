@@ -10,7 +10,7 @@
 //     carries her over a double ravine (the critical path itself goes airborne);
 //   • climax (x86–119): a terraced climb (1 then 2 cells) to a goal with a view.
 //   • secret (x68–81): a spring lifts her onto a CANOPY semisolid above the lane — a
-//     trail of apples and a second star pay out the detour (off the bot's critical path).
+//     trail of apples and a second star pay out the detour (off the critical path).
 // Checkpoints at x49, x68 and x88 keep retries kind — deaths still cost 500 Coccoline.
 
 import { composeMap, arcCollectibles, laneFor, airFor } from "./mapkit.js";

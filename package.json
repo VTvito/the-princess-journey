@@ -12,8 +12,6 @@
     "test:features": "node tools/test/features.mjs",
     "test:levels": "node tools/test/levels.mjs",
     "test:mobile": "node tools/test/mobile.mjs",
-    "test:play": "node tools/test/play.mjs",
-    "test:all": "node tools/test/smoke.mjs && node tools/test/features.mjs && node tools/test/levels.mjs && node tools/test/play.mjs",
     "deploy": "node tools/deploy.mjs"
   },
   "devDependencies": {

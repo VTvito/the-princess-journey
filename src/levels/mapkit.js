@@ -4,16 +4,13 @@
 // error-prone to hand-type as string literals. This helper builds the rows
 // programmatically.
 //
-// THE CRITICAL-PATH CONTRACT (v2). The autoplay bot (tools/test/play.mjs) no longer
-// assumes a flat bottom lane or absolute y-thresholds: its probes are RELATIVE to the
-// heroine's feet, it can climb steps (terraces up to 2 cells), and it can wait for
-// moving platforms. What level data must still guarantee:
-//   • the left→right critical path is completable with run / jump / wait alone
-//     (single jumps clear ≤2-cell gaps and ≤2-cell climbs — tuned to config.PHYSICS);
-//   • exotic set-pieces on the critical path declare `bot.hints` on the level def
-//     (see play.mjs) rather than bending the geometry back to flatness;
-//   • verticality, bonus routes and optional pickups are unconstrained — the bot
-//     ignores everything off the lane it travels.
+// THE CRITICAL-PATH CONTRACT. The design rule that keeps every level fair and beatable:
+//   • the left→right critical path is completable with run / jump / wait alone — single
+//     jumps clear ≤2-cell gaps and ≤2-cell climbs (tuned to config.PHYSICS; there is NO
+//     double jump), and moving platforms can be ridden by waiting at a gap's edge;
+//   • verticality, bonus routes and optional pickups are unconstrained — they live OFF
+//     the critical path, so they may demand springs / feathers / updrafts / precise hops
+//     without ever blocking completion of the level.
 //
 // Terminology: the GROUND is the bottom two solid rows (broken by ravines); TERRACES
 // raise the walkable surface by `h` cells for a run of columns; the LANE is the row

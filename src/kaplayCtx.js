@@ -33,8 +33,7 @@ export const k = kaplay({
   // 120Hz, ma l'engine free-running non tiene i 120 pieni a causa del costo JS per-frame, così
   // la cadenza oscilla (120→95→110…) e gli intervalli irregolari si leggono come "scattoso"
   // anche con fps medio alto. Un 60 fermo è più liscio di un 90-110 ballerino — è l'obiettivo
-  // di fluidità su mobile. Desktop resta libero (di norma già a 60Hz, e il bot autoplay
-  // desktop non deve cambiare timing).
+  // di fluidità su mobile. Desktop resta libero (di norma già a 60Hz).
   maxFPS: coarsePointer ? 60 : undefined,
   crisp: true, // nearest-neighbour sampling so the generated 64px tiles/sprites stay sharp
   // Default UI font: the vendored pixel font (loaded in src/assets.js as "pixel"). Every

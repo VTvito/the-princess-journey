@@ -69,21 +69,17 @@ npm run serve           # terminal 1 — serves http://localhost:8137
 npm test                # terminal 2 — smoke + features + levels
 npm run test:features   # audio buses, SFX load, movement/jump, Insert Coin, finale receipt
 npm run test:levels     # boots each of levels 1–6, asserts no errors + screenshots the art
-npm run test:play       # autoplay bot drives each level 1–6 to its goal (reachability guard)
 npm run test:mobile     # iPhone-landscape emulation: audio unlock, touch controls, fit, hint
 ```
 
-`test:play` is the regression guard for playability: a rule-based bot runs, jumps, and waits
-its way through each level and fails if a goal can't be reached. `test:mobile` emulates a
-recent iPhone in landscape and asserts the mobile fixes (see **Mobile / iOS** below).
+`test:mobile` emulates a recent iPhone in landscape and asserts the mobile fixes (see
+**Mobile / iOS** below).
 
 > **Flaky checks (known, pre-existing):** a few timing-sampled assertions in `test:features`
-> (`air anim while jumping`, `spring launches the player`) and the autoplay bot on **Livello 3**
-> (and occasionally **Livello 5**, whose breeze glide is timing-luck) can intermittently fail at
-> frame boundaries — they flip pass/fail with identical code, so re-run (`npm run test:play
-> --levels 5`) before treating one as a regression. **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml))
-> parses every module and runs the smoke + per-level boot gates; the feature/autoplay suites run
-> non-blocking for exactly this reason.
+> (`air anim while jumping`, `spring launches the player`) can intermittently fail at frame
+> boundaries — they flip pass/fail with identical code, so re-run before treating one as a
+> regression. **CI** ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) parses every module
+> and runs the smoke + per-level boot gates; the feature suite runs non-blocking for this reason.
 
 Each test writes a screenshot to `tools/test/`. The tests read a localhost-only dev handle
 (`window.__pj.k`, set in `src/main.js`) to introspect/drive the engine; it's never attached on
@@ -208,11 +204,10 @@ tools/
     smoke.mjs           boots the game in real Edge, asserts it reaches the menu
     features.mjs        audio buses, movement, Insert Coin, finale receipt
     levels.mjs          boots each level 1–6 (no errors) + screenshots the themed art
-    play.mjs            autoplay bot drives each level to its goal (reachability guard)
     mobile.mjs          iPhone-landscape emulation: audio unlock, controls, fit, install hint
     browser.mjs         shared Edge launcher for the test scripts
 .claude/skills/         project skills: serve-game, deploy, mobile-check, regen-assets
-.github/workflows/ci.yml  CI: module syntax + smoke/levels gates (feature/autoplay non-blocking)
+.github/workflows/ci.yml  CI: module syntax + smoke/levels gates (feature suite non-blocking)
 assets/fonts/           the vendored pixel UI font (Pixelify Sans, OFL) — Kaplay + DOM
 ```
 

@@ -79,7 +79,7 @@ export const LEVEL_5 = {
     // moth alley. Each hop is ≤2 cells (a single jump clears 2 — there is NO double jump),
     // so the climb is actually reachable: lane → row10 → row8 → balcony (row7). The steps
     // are semisolids (#), so she passes up through them and the low one can't wall her in
-    // as she runs underneath. All off the bot's lane → it ignores them (verify test:play).
+    // as she runs underneath. All off the critical path → optional, never block completion.
     semisolids: [
       { x: 61, y: 7, w: 10 }, // the balcony itself
       { x: 57, y: 10, w: 1 }, // step 1 (2 cells over the lane — reachable)
@@ -120,13 +120,13 @@ export const LEVEL_5 = {
       { x: 89, y: 8, ch: "o" },
       { x: 90, y: 8, ch: "o" },
       { x: 91, y: 8, ch: "o" },
-      // The pergola balcony's rose trail (a one-way bonus route, bot-invisible).
+      // The pergola balcony's rose trail (a one-way bonus route, off the critical path).
       { x: 62, y: 6, ch: "o" },
       { x: 65, y: 6, ch: "o" },
       { x: 68, y: 6, ch: "o" },
       // REMIX (Fase 2): a feather on the balcony, then a rose stash three cells higher —
       // out of a normal jump's reach, so only the feather's high-jump claims it (all while
-      // the armored moth haunts the alley below). Off the critical path → bot unaffected.
+      // the armored moth haunts the alley below). Off the critical path → fully optional.
       { x: 66, y: 6, ch: "+" },
       { x: 64, y: 3, ch: "o" },
       { x: 67, y: 3, ch: "o" },

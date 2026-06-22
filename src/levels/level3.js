@@ -92,7 +92,7 @@ export const LEVEL_3 = {
       { x: 68, y: 8, ch: "g" },
       // …and one patrolling above the secret ridgeline (high enough to hover clear of a
       // walker's head — it only threatens during its dives). Kept BETWEEN the two alley
-      // swoopers' columns: an air enemy overhead vetoes the bot's hop exactly where the
+      // swoopers' columns: an air enemy overhead would block the hop exactly where the
       // alley dives demand one.
       { x: 61, y: 3, ch: "g" },
       // Checkpoints thinned to two (a death costs more progress now): before the alley and
@@ -118,7 +118,7 @@ export const LEVEL_3 = {
       { x: 62, y: 5, ch: "o" },
       // REMIX (Fase 2): a feather on the ridgeline lifts her to a high lantern pair the
       // normal jump can't reach — claimed under the dives of the ridgeline's own ghost.
-      // Off the critical path (the ridgeline is bot-invisible) → reachability unaffected.
+      // Off the critical path (the ridgeline is an optional high route) → completion unaffected.
       { x: 56, y: 5, ch: "+" },
       { x: 52, y: 2, ch: "o" },
       { x: 60, y: 2, ch: "o" },

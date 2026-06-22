@@ -44,7 +44,7 @@ export function makePlayer(char, pos, skinKeys = [], feel = {}) {
     k.scale(PLAYER_SCALE),
     // Collider ~40×92: narrower than the 64px art so she fits one-tile gaps and lands
     // forgivingly, nearly full-height so she still reads as solid. Tuned against the 64px
-    // level grid (see src/levels/*.js) and validated by tools/test/play.mjs.
+    // level grid (see src/levels/*.js).
     k.area({ scale: k.vec2(0.62, 0.96) }),
     k.body(), // gravity + collisions (k.setGravity is set by the scene)
     "player",

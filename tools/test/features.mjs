@@ -225,7 +225,7 @@ try {
 
   // --- Mario-style stomp + hit-stop: drop the heroine onto a crab; the enemy must die
   // and debug.timeScale must come back to 1 (a stranded hit-stop would slow-motion the
-  // whole game). This is a feature probe, not bot play, so teleporting is fair game. ---
+  // whole game). This is a feature probe, not a real play-through, so teleporting is fair game. ---
   const stomp = await page.evaluate(async () => {
     const k = window.__pj.k;
     const player = k.get("player")[0];

@@ -19,7 +19,6 @@ file is the agent/contributor playbook.
 ```bash
 python tools/serve.py 8137   # or npm run serve   (skill: /serve-game). MIME-correct ES modules.
 npm test                     # smoke + features + levels (Playwright-core → installed Edge)
-npm run test:play            # autoplay reachability guard (levels 1–6)
 npm run test:mobile          # iPhone-landscape emulation (audio unlock, controls, fit, hint)
 npm run gen                  # regenerate all assets (deterministic) — don't hand-edit assets/
 npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gitignored .env)
@@ -27,11 +26,8 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
 
 ## Gotchas
 - **Test flakiness (pre-existing, not regressions):** `air anim while jumping` and `spring
-  launches the player` in `test:features`, and the autoplay bot on **Livello 3** (and
-  occasionally **Livello 5**, whose breeze glide is timing-luck — a bad cluster of deaths can
-  time the bot out at ~80% even though the level is completable), sample at frame boundaries and
-  flip pass/fail with identical code. Re-run (`npm run test:play --levels 5`) before assuming a
-  break — per-level death counts swing widely (e.g. L5 has read 1 and 22 on back-to-back runs).
+  launches the player` in `test:features` sample at frame boundaries and can flip pass/fail with
+  identical code. Re-run before assuming a break.
 - **iOS audio:** the `AudioContext` unlocks only on a **real DOM gesture**, handled by
   `src/audioUnlock.js` (window capture listener) — a Kaplay `onClick` runs in the rAF loop and
   does NOT count. If you change audio init, keep that gesture path.
@@ -45,7 +41,7 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
   pixel art, visually near-identical. Emulation can't measure this; confirm FPS on a real iPhone.
 - **Emulation ≠ device:** Edge/Chromium can't reproduce WebKit audio quirks or the notch
   safe-area — real iOS audio/safe-area must be verified on a physical iPhone.
-- **Dev handle:** `window.__pj` (engine + input + debug) is attached **only on localhost**
+- **Dev handle:** `window.__pj` (engine + live virtual `input`) is attached **only on localhost**
   (`src/main.js`); tests drive the game through it. Never rely on it in shipped code.
 - **Pixel UI font:** the Kaplay default font is `"pixel"` (`src/kaplayCtx.js`, loaded in
   `src/assets.js`, mirrored via `@font-face` in `style.css`). It has **no emoji/★ glyphs**, so a
@@ -61,12 +57,11 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
   a one-way **semisolid** (`#`), never a solid `platforms` slab — a solid slab over a spring
   blocks the bounce from below (she bonks its underside). A reliable, higher arc also overshoots
   farther, so keep the bounce-landing clear of hazards.
-- **Difficulty lives in level data, not enemy speed:** `ENEMIES` speeds are tightly coupled to
-  the autoplay bot's hop timing — bumping `CRAB_SPEED`/`FLY_SPEED` globally death-loops the bot
-  at existing crab+thorn+gap clusters (`test:play` fails, often flaky-looking). Tune difficulty
-  per-level instead: add enemies/hazards on flat stretches **clear of jump arcs and patrol
-  ranges**, add 2-cell gaps (never >2 on the critical path — the bot can't single-jump wider),
-  thin out checkpoints. Re-run `test:play` per level after each change.
+- **Difficulty lives in level data, not enemy speed:** prefer tuning difficulty per-level over
+  bumping global `ENEMIES` speeds (`CRAB_SPEED`/`FLY_SPEED`), which shifts every existing
+  crab+thorn+gap cluster at once and is hard to reason about. Add enemies/hazards on flat
+  stretches **clear of jump arcs and patrol ranges**, add 2-cell gaps (never >2 on the critical
+  path — a single jump can't clear wider; there is no double jump), thin out checkpoints.
 - **Service worker is prod-only:** `sw.js` is registered in `src/main.js` **only off localhost**,
   so it never caches stale files between Playwright runs / dev edits. On a real content change,
   bump `CACHE` in `sw.js` so clients fetch fresh.

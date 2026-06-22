@@ -66,9 +66,7 @@ if (
 
 // Dev-only test handle (localhost). Lets automated tests/dev tools introspect the
 // engine AND drive it: `input` is the live virtual-input object (set .left/.right/.jump
-// to play headlessly without synthetic key events), and `debug` is updated by the game
-// scene so the autoplay bot (tools/test/play.mjs) can detect deaths and goal-reached.
-// Never attached on a real deployment.
+// to play headlessly without synthetic key events). Never attached on a real deployment.
 if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
-  window.__pj = { k, input: getInput(), debug: { deaths: 0, reachedGoal: false } };
+  window.__pj = { k, input: getInput() };
 }

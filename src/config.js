@@ -176,7 +176,7 @@ export const POWERUP = {
   DURATION: 5, // seconds of invincibility per star (shortened from 7 — less of a "win button")
   // Feather (Fase 2): a short high-jump window — the player's jump force is multiplied while
   // it lasts, so she can reach the high bonus routes. Placed off the critical path (bonus
-  // perches), so grabbing it is always optional and never affects the autoplay reachability.
+  // perches), so grabbing it is always optional and never required to complete a level.
   FEATHER_DURATION: 8,
   FEATHER_JUMP_MUL: 1.4,
 };

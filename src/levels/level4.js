@@ -105,6 +105,13 @@ export const LEVEL_4 = {
       // shelf's crystal hoard (territorial: ±4 cells).
       { x: 84, y: LANE, ch: "r" },
       { x: 65, y: 5, ch: "r" },
+      // A feather floating 2 cells above the ridge top (just under the secret shelf): the
+      // stepping slab (x60,row8) sits a 2-up/2-left diagonal from the ridge — at the very edge
+      // of a normal jump and brutal on touch. A deliberate straight-up hop from the ridge grabs
+      // this feather, and its high-jump (×1.4 ≈ 4.5 cells) then makes the slab + the shelf
+      // above comfortable. Kept OFF the walk line (row 7, not row 9): you only reach it by
+      // choosing to jump for the secret, so the flat-ridge walk to the climax is untouched.
+      { x: 63, y: 7, ch: "+" },
       // Checkpoints: after the intro ice, mid-level, and right before the great chasm.
       { x: 26, y: LANE, ch: "F" },
       { x: 46, y: LANE, ch: "F" },
