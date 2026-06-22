@@ -1,4 +1,4 @@
-// juice.js — small "game feel" helpers (Specifiche_Polishing §3). Pure Kaplay, no DOM,
+// juice.js — small "game feel" helpers. Pure Kaplay, no DOM,
 // so it never touches the UI overlays: confetti bursts, dust puffs, screen shake and
 // hit-stop. (Squash & stretch lives in the player entity; parallax lives in the game
 // scene, both tightly coupled to those files.)

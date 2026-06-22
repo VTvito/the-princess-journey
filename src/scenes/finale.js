@@ -1,4 +1,4 @@
-// finale.js — "Sala da Ballo", the closing cutscene (spec §5).
+// finale.js — "Sala da Ballo", the closing cutscene.
 // A non-playable, cinematic scene: no gravity, no input bound. The chosen heroine stands
 // centre-stage as the "Principessa Perfetta" wearing all six unlocked skins, with a
 // centred box showing a personalized message (edit FINALE in config.js). A single button
@@ -132,10 +132,10 @@ export function registerFinaleScene() {
     btn.onClick(toMenu);
     k.onKeyPress(["enter", "space", "escape"], toMenu);
 
-    // The payoff (spec §2): the receipt is a full-screen overlay that covers the heartfelt
+    // The payoff: the receipt is a full-screen overlay that covers the heartfelt
     // message, so hold it back long enough to actually READ the journey note first (it used
     // to pop after 1.4s and bury the message). Its "Chiudi" button returns to the message.
-    const RECEIPT_DELAY = 6.5; // s — a comfortable read of the six-chapter message
+    const RECEIPT_DELAY = 10; // s — an unhurried read of the six-chapter message before the receipt
     k.wait(RECEIPT_DELAY, () => showReceipt(getCoccolineRun(), getCoccoline()));
   });
 }

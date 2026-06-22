@@ -1,4 +1,4 @@
-// level4.js — "Cime Innevate" (spec §4, Livello 4 — the final climb).
+// level4.js — "Cime Innevate" (Livello 4 — the final climb).
 // Pure DATA: a tile map + a colour theme; the generic builder (build.js) renders it.
 // Level identity: ICY handling (a longer accel ramp via def.feel — she slides into and
 // out of her run), territorial snowball ROLLERS, dropping stalactites, and a climactic
@@ -22,7 +22,7 @@ export const LEVEL_4 = {
   name: "Cime Innevate",
   tileSize: 64,
 
-  // Vetta innevata: cielo pallido, picchi e neve che cade (spec §4).
+  // Vetta innevata: cielo pallido, picchi e neve che cade.
   theme: {
     decor: "snow", // background style (see game.js drawBackground)
     collectibleIcon: "💎", // HUD icon for the crystals (older emoji; renders on Win10)
@@ -82,8 +82,11 @@ export const LEVEL_4 = {
       { x: 62, w: 8, h: 2 },
     ],
     // The secret icy shelf over the ridge, served by a stepping slab from the ridge top.
+    // The slab sits just left of the h=2 ridge (x62) so the hop up onto it is a single
+    // ≤2-cell jump (there is NO double jump); from the slab a second ≤2-cell hop reaches
+    // the shelf. (It used to sit at x58 — 4 cells from the ridge — i.e. unreachable.)
     platforms: [
-      { x: 58, y: 8, w: 1 },
+      { x: 60, y: 8, w: 1 },
       { x: 61, y: 6, w: 8 },
     ],
     items: [
@@ -109,9 +112,9 @@ export const LEVEL_4 = {
       // Ice spikes on the lane.
       { x: 22, y: LANE, ch: "^" },
       { x: 35, y: 10, ch: "^" }, // on the first terrace's edge — room to accelerate on ice
+      { x: 40, y: LANE, ch: "^" }, // post-terrace flat, clear of the x44 stalattite column
       { x: 92, y: LANE, ch: "^" },
-      // Star power-up before the ridge — shrug off a stalactite or the roller.
-      { x: 54, y: LANE, ch: "*" },
+      // (No star before the ridge anymore — the stalactite timing and the roller bite now.)
       ...arcCollectibles([6, 12, 20, 42, 50, 56, 78, 88, 102], [AIR, LANE - 1]),
       // The crystal hoard on the secret shelf.
       { x: 62, y: 5, ch: "o" },

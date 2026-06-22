@@ -1,4 +1,4 @@
-// sfx.js — tiny wrapper around k.play for gameplay sound effects (Specifiche_Polishing §3/§4).
+// sfx.js — tiny wrapper around k.play for gameplay sound effects.
 // Each cue plays on the SFX bus: its base volume below is scaled by sfxGain() (0 when the
 // 🔊 toggle is off, see src/audio.js), so effects mute independently of the background music.
 // The call is wrapped so a not-yet-loaded sound or a still-locked AudioContext can never

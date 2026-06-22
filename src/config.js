@@ -18,7 +18,7 @@ export const PALETTE = {
   shadow: [0, 0, 0],
 };
 
-// Start Screen character roster (spec §3). `sprite` is the asset key loaded in assets.js.
+// Start Screen character roster. `sprite` is the asset key loaded in assets.js.
 // Skins layer on top of these base looks as levels are cleared (future prompts).
 export const CHARACTERS = [
   {
@@ -49,10 +49,10 @@ export const CHARACTERS = [
   },
 ];
 
-// Total playable levels before the finale (spec §4). Used for clamping currentLevel.
+// Total playable levels before the finale. Used for clamping currentLevel.
 export const MAX_LEVEL = 7;
 
-// Skin progression (spec §3) — clothing layers added on top of the base body as levels
+// Skin progression — clothing layers added on top of the base body as levels
 // are cleared. `afterLevel` is the level whose completion unlocks the layer; the keys are
 // sprite asset keys (see ASSETS.sprites). Order = paint order (skirt under … under crown).
 export const SKINS = [
@@ -72,7 +72,7 @@ export const unlockedSkinKeys = (level) =>
 // The skin a level's completion grants (for the reward screen). May be undefined.
 export const skinUnlockedBy = (level) => SKINS.find((s) => s.afterLevel === level);
 
-// Enemy tunables (spec §4). Crabs patrol horizontally on the ground; flyers (ostacoli
+// Enemy tunables. Crabs patrol horizontally on the ground; flyers (ostacoli
 // volanti, Livello 3) patrol horizontally in the air with a gentle vertical bob. RANGE is
 // the half-width of the ping-pong path around the spawn. Units: px and px/s.
 export const ENEMIES = {
@@ -91,7 +91,7 @@ export const HAZARDS = {
   STALACTITE_INTERVAL: 2.8, // max wait between drops (each gets a random phase up to this)
 };
 
-// Finale "Sala da Ballo" (spec §5) — the cinematic that closes the journey. This is the
+// Finale "Sala da Ballo" — the cinematic that closes the journey. This is the
 // gift's emotional centerpiece: edit `message` freely (keep it bracket-free and stick to
 // widely-shipped emoji like 👑 ✨ 💎 — newer ones render as tofu boxes on Win10).
 export const FINALE = {
@@ -107,7 +107,7 @@ export const FINALE = {
     "Buon viaggio, principessa.",
 };
 
-// Platformer tunables (spec §2). Centralised so entity/level code stays free of magic
+// Platformer tunables. Centralised so entity/level code stays free of magic
 // numbers and difficulty is easy to tweak. Units: px and px/s.
 export const PHYSICS = {
   GRAVITY: 1800,    // base downward acceleration (px/s²)
@@ -154,7 +154,7 @@ export const MECHANICS = {
   PENDULUM_PERIOD: 3.2,    // s per full left-right-left swing (slow = readable safe windows)
 };
 
-// Camera feel (spec §2): the camera leads the heroine in her facing direction so she sees
+// Camera feel: the camera leads the heroine in her facing direction so she sees
 // where she's going (Mario-style), easing toward the target instead of snapping.
 export const CAMERA = {
   LOOKAHEAD: 90, // px ahead of the heroine in the facing direction
@@ -173,7 +173,7 @@ export const SCORE = {
 // the heroine, and simply touching an enemy defeats it (Mario "star" power). A fall into a
 // ravine still ends the run.
 export const POWERUP = {
-  DURATION: 7, // seconds of invincibility per star
+  DURATION: 5, // seconds of invincibility per star (shortened from 7 — less of a "win button")
   // Feather (Fase 2): a short high-jump window — the player's jump force is multiplied while
   // it lasts, so she can reach the high bonus routes. Placed off the critical path (bonus
   // perches), so grabbing it is always optional and never affects the autoplay reachability.
@@ -198,14 +198,14 @@ export const ASSETS = {
     sognatrice: "assets/sprites/sognatrice.png",
     avventuriera: "assets/sprites/avventuriera.png",
     logo: "assets/sprites/logo.png",
-    // Skin layers (spec §3) — same 64×96 transparent canvas, overlaid on the base body.
+    // Skin layers — same 64×96 transparent canvas, overlaid on the base body.
     skirt: "assets/sprites/skirt.png",
     bodice: "assets/sprites/bodice.png",
     necklace: "assets/sprites/necklace.png",
     crown: "assets/sprites/crown.png",
     gloves: "assets/sprites/gloves.png",
     cape: "assets/sprites/cape.png",
-    // World sprites (spec §2) — per-level collectibles, enemies, and the goal portal.
+    // World sprites — per-level collectibles, enemies, and the goal portal.
     // Collectibles/enemies are drawn in natural colour; the portal is neutral grey and
     // tinted with theme.goal at build time (see src/levels/build.js).
     apple: "assets/sprites/apple.png",
@@ -245,7 +245,7 @@ export const ASSETS = {
     deco_royalbanner: "assets/sprites/deco_royalbanner.png",
   },
 
-  // Tile atlas (spec §2) — one 64px strip tinted per theme at runtime. Frames map names to
+  // Tile atlas — one 64px strip tinted per theme at runtime. Frames map names to
   // sub-rects so src/levels/build.js can do k.sprite("ground_top") etc. Offsets follow the
   // TILE_FRAMES order in tools/gen/world.mjs: _2 are look-alike variants (so long runs don't
   // visibly repeat), _l/_r are carved edge caps, grass_cap* are the transparent surface
@@ -268,7 +268,7 @@ export const ASSETS = {
     },
   },
 
-  // Parallax backgrounds (spec §2) — 3 layers × 4 themes, scrolled in src/scenes/game.js.
+  // Parallax backgrounds — 3 layers × 4 themes, scrolled in src/scenes/game.js.
   backgrounds: {
     forest_sky: "assets/backgrounds/forest_sky.png",
     forest_mid: "assets/backgrounds/forest_mid.png",
@@ -301,7 +301,7 @@ export const ASSETS = {
     "bgm-snow": "assets/audio/bgm-snow.wav",
     "bgm-garden": "assets/audio/bgm-garden.wav",
     "bgm-castle": "assets/audio/bgm-castle.wav",
-    // Gameplay SFX (spec §3/§4) — synthesized, played via src/sfx.js on the SFX bus so the
+    // Gameplay SFX — synthesized, played via src/sfx.js on the SFX bus so the
     // 🔊 toggle mutes them independently of the music. Swap the files keeping these keys.
     jump: "assets/audio/jump.wav",
     collect: "assets/audio/collect.wav",

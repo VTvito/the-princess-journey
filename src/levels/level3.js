@@ -1,4 +1,4 @@
-// level3.js — "Tetti d'Oriente" (spec §4, Livello 3).
+// level3.js — "Tetti d'Oriente" (Livello 3).
 // Pure DATA: a tile map + a colour theme; the generic builder (build.js) renders it.
 // Level identity: TERRACED rooftops to climb, lantern-ghost SWOOPERS that dive at her,
 // and a climactic CRUMBLING ridge run. Legend: see build.js.
@@ -22,7 +22,7 @@ export const LEVEL_3 = {
   name: "Tetti d'Oriente",
   tileSize: 64,
 
-  // Tetti al tramonto: cielo viola/oro, pagode in lontananza (spec §4).
+  // Tetti al tramonto: cielo viola/oro, pagode in lontananza.
   theme: {
     decor: "rooftops", // background style (see game.js drawBackground)
     collectibleIcon: "🏮", // HUD icon for the lanterns (older emoji; renders on Win10)
@@ -95,9 +95,9 @@ export const LEVEL_3 = {
       // swoopers' columns: an air enemy overhead vetoes the bot's hop exactly where the
       // alley dives demand one.
       { x: 61, y: 3, ch: "g" },
-      // Checkpoints: end of the first roof (past its spike — a respawn right before a
-      // hazard leaves no run-up to clear it), before the alley, before the staircase.
-      { x: 28, y: 10, ch: "F" },
+      // Checkpoints thinned to two (a death costs more progress now): before the alley and
+      // before the staircase. The old early x28 flag (end of the first roof) is gone — the
+      // climb up the two roofs is banked only from the spawn.
       { x: 46, y: LANE, ch: "F" },
       { x: 78, y: LANE, ch: "F" },
       // Broken-tile spikes: street, both roofs, and the post-ridge landing zone.
@@ -107,9 +107,9 @@ export const LEVEL_3 = {
       { x: 26, y: 10, ch: "^" }, // on the first roof's surface
       { x: 43, y: 9, ch: "^" }, // on the second roof's edge — room to accelerate after the climb
       { x: 58, y: LANE, ch: "^" },
+      { x: 74, y: LANE, ch: "^" }, // post-alley spike, clear of the x68 swooper's dive range
       { x: 112, y: LANE, ch: "^" },
-      // Star power-up right after the first checkpoint — brave the alley invincible.
-      { x: 49, y: LANE, ch: "*" },
+      // (No star before the alley anymore — the swoopers must be timed/dodged, not bulldozed.)
       ...arcCollectibles([6, 14, 20, 31, 42, 52, 66, 74, 86, 107, 114], [AIR, LANE - 1]),
       // Lanterns strung along the secret ridgeline.
       { x: 50, y: 5, ch: "o" },

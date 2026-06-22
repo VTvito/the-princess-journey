@@ -1,4 +1,4 @@
-// level2.js — "Abissi di Corallo" (spec §4, Livello 2).
+// level2.js — "Abissi di Corallo" (Livello 2).
 // Pure DATA: a tile map + a colour theme; the generic builder (build.js) renders it.
 // Level identity: MOVING jellyfish platforms over wide gaps + an UPDRAFT shaft, with
 // patrolling crabs between them. Legend: see build.js.
@@ -21,7 +21,7 @@ export const LEVEL_2 = {
   name: "Abissi di Corallo",
   tileSize: 64,
 
-  // Sottomarino: bolle, blu e corallo (spec §4).
+  // Sottomarino: bolle, blu e corallo.
   theme: {
     decor: "coral", // background style (see game.js drawBackground)
     collectibleIcon: "🐚", // HUD icon for the pearls (older emoji; 🫧 is tofu on Win10)
@@ -87,15 +87,16 @@ export const LEVEL_2 = {
       // …continuing up as a narrow secret chimney to the perch above.
       ...[4, 5, 6, 7].map((y) => ({ x: 89, y, ch: "w" })),
       { x: 26, y: LANE, ch: "M" }, // spring up to the bonus reef
-      // Checkpoints: after the first ride, before the second ride, before the shaft.
-      // (Placed with clean run-up ahead — a respawn right before a hazard or onto the
-      // spring's forced bounce turns one unlucky death into a loop.)
+      // Checkpoints thinned to two (a death costs more progress now): after the first ride and
+      // before the shaft. The old mid x68 flag is gone, so the twist (second jellyfish + crab
+      // pressure, with the star removed) is banked only at x46. (Clean run-up ahead of each — a
+      // respawn right before a hazard or onto the spring's forced bounce turns a death into a loop.)
       { x: 46, y: LANE, ch: "F" },
-      { x: 68, y: LANE, ch: "F" },
       { x: 84, y: LANE, ch: "F" },
       // Urchins on the lane, clear of gap edges and crab patrols.
       { x: 14, y: LANE, ch: "^" },
       { x: 34, y: LANE, ch: "^" },
+      { x: 50, y: LANE, ch: "^" }, // post-mover-gap flat (run-up from the x46 checkpoint)
       { x: 60, y: LANE, ch: "^" },
       { x: 104, y: LANE, ch: "^" },
       // Crabs patrolling the stretches between set-pieces.
@@ -103,9 +104,9 @@ export const LEVEL_2 = {
       { x: 30, y: LANE, ch: "c" },
       { x: 52, y: LANE, ch: "c" },
       { x: 76, y: LANE, ch: "c" },
+      { x: 94, y: LANE, ch: "c" }, // a fresh guard on the post-updraft flat (banked at x84)
       { x: 100, y: LANE, ch: "c" },
-      // Star power-up mid-level — plough through the twist's crab pressure.
-      { x: 64, y: LANE, ch: "*" },
+      // (No mid-level star anymore — the twist's crab + urchin pressure now bites for real.)
       ...arcCollectibles([8, 16, 21, 32, 44, 50, 58, 66, 78, 86, 96, 102, 110], [AIR, LANE - 1]),
       // Crumble ledge: a quick risky hop over the twist stretch pays out two pearls.
       { x: 62, y: 9, ch: "!" },

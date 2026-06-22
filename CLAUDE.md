@@ -1,7 +1,7 @@
 # CLAUDE.md — The Princess Journey
 
-Quick reference for working in this repo. Design lore lives in `Specifiche_*.md`; the
-user-facing guide is `README.md`. This file is the agent/contributor playbook.
+Quick reference for working in this repo. The user-facing guide is `README.md`; this
+file is the agent/contributor playbook.
 
 ## What this is
 - A **no-build** browser platformer. Kaplay is **vendored** (`vendor/kaplay-3001.0.19.mjs`)
@@ -39,6 +39,10 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
   clear it; keep that invariant or the D-pad reappears over the menu.
 - **Fit:** `html, body` use `100dvh`; interactive UI uses `env(safe-area-inset-*)`. Don't
   revert to `height: 100%` (it clips under the iOS toolbar).
+- **Mobile render density:** touch devices (`pointer: coarse`) use `pixelDensity: 1`
+  (`src/kaplayCtx.js`); desktop keeps `min(dpr, 2)`. On a 3× iPhone the old 2× backbuffer was
+  ~4× the fill-rate and made the game stutter — density 1 is smooth and, on nearest-neighbour
+  pixel art, visually near-identical. Emulation can't measure this; confirm FPS on a real iPhone.
 - **Emulation ≠ device:** Edge/Chromium can't reproduce WebKit audio quirks or the notch
   safe-area — real iOS audio/safe-area must be verified on a physical iPhone.
 - **Dev handle:** `window.__pj` (engine + input + debug) is attached **only on localhost**

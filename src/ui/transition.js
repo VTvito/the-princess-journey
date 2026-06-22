@@ -1,4 +1,4 @@
-// transition.js — scene fade transitions (Specifiche_Polishing §4).
+// transition.js — scene fade transitions.
 //
 // Native CSS opacity fade on a black DOM layer (#fade): fade to black, switch the Kaplay
 // scene while covered, then fade back in — so finishing a level and starting the next one

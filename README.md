@@ -2,7 +2,7 @@
 
 A personalized 2D platformer gift, built with [Kaplay](https://kaplayjs.com/)
 (`3001.0.19`, **vendored** at `vendor/kaplay-3001.0.19.mjs` and imported directly — no build
-step, no CDN at runtime). See `Specifiche_Gioco_Anna_Princess.md` for the original design.
+step, no CDN at runtime).
 
 The full journey is playable: a responsive landscape canvas, a main menu with character
 selection (Anna / La Sognatrice / L'Avventuriera), **six** themed platformer levels with a
@@ -113,6 +113,9 @@ Landscape, mobile-first. The pieces that make it feel right on a phone:
 - **Landscape fit** — `html, body` use **`100dvh`** so the canvas tracks the *actually visible*
   viewport (no clip under the Safari toolbar/status bar); interactive UI uses
   `env(safe-area-inset-*)` for the notch / home indicator.
+- **Smooth on mobile** — touch devices (`pointer: coarse`) render at **`pixelDensity: 1`**
+  ([`src/kaplayCtx.js`](src/kaplayCtx.js)) instead of 2×: on a 3× iPhone that is ~4× less
+  fill-rate, so the pixel-art world stays fluid on a mobile GPU. Desktop keeps `min(dpr, 2)`.
 - **Install hint** ([`src/ui/installHint.js`](src/ui/installHint.js)) — iPhone Safari tabs
   can't go true fullscreen, so a small dismissible "Aggiungi a Home" banner (iOS-only, not in
   standalone, persisted) nudges PWA install.
@@ -277,7 +280,7 @@ so a reload offers **Rivedi il Gran Ballo**.
 
 ## Polishing & meta-game
 
-A "juiciness" + meta-game layer sits on top of the core game (see `Specifiche_Polishing.md`).
+A "juiciness" + meta-game layer sits on top of the core game.
 All DOM/HTML is isolated in `index.html`, `style.css`, and `src/ui/`, so it never touches the
 collision logic in `game.js`:
 

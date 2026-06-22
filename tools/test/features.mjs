@@ -1,5 +1,5 @@
-// features.mjs — deeper browser regression test for the polishing features
-// (Specifiche_Polishing). Drives the running game in real Edge via the dev handle
+// features.mjs — deeper browser regression test for the polishing features.
+// Drives the running game in real Edge via the dev handle
 // (window.__pj.k) + DOM, and asserts each meta-game / QoL behaviour.
 //
 // Usage:  python tools/serve.py 8137   (then)   node tools/test/features.mjs
@@ -88,7 +88,7 @@ try {
   await page.mouse.click(640, 360);
   await page.waitForTimeout(50);
 
-  // --- SFX assets registered + playable (Specifiche_Polishing §3/§4). The focus click above
+  // --- SFX assets registered + playable. The focus click above
   // is a user gesture, so the AudioContext is unlocked and these silent probes stay quiet. ---
   const sfxMissing = await page.evaluate(() => {
     const k = window.__pj.k;

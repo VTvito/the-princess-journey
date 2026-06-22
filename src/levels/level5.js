@@ -75,10 +75,16 @@ export const LEVEL_5 = {
       { x: 102, w: 5, h: 1 },
       { x: 107, w: 17, h: 2 },
     ],
-    // The pergola step: bot-invisible (3 cells up — out of its step probe), human-jumpable
-    // via a double hop. Leads onto the one-way balcony above the moth alley.
-    platforms: [{ x: 59, y: 9, w: 1 }],
-    semisolids: [{ x: 61, y: 7, w: 10 }],
+    // The pergola route: a one-way staircase of petal-steps up to the balcony above the
+    // moth alley. Each hop is ≤2 cells (a single jump clears 2 — there is NO double jump),
+    // so the climb is actually reachable: lane → row10 → row8 → balcony (row7). The steps
+    // are semisolids (#), so she passes up through them and the low one can't wall her in
+    // as she runs underneath. All off the bot's lane → it ignores them (verify test:play).
+    semisolids: [
+      { x: 61, y: 7, w: 10 }, // the balcony itself
+      { x: 57, y: 10, w: 1 }, // step 1 (2 cells over the lane — reachable)
+      { x: 59, y: 8, w: 1 }, //  step 2 (2 cells over step 1)
+    ],
     items: [
       { x: 2, y: LANE, ch: "@" },
       { x: 120, y: 9, ch: ">" }, // goal on the upper garden terrace
@@ -104,14 +110,15 @@ export const LEVEL_5 = {
       { x: 50, y: LANE, ch: "c" },
       { x: 80, y: LANE, ch: "c" },
       { x: 114, y: 9, ch: "c" }, // on the upper terrace, guarding the gate
-      // Star power-up before the moth alley.
-      { x: 58, y: LANE, ch: "*" },
+      // (No star before the moth alley anymore — the moth + armored-moth dives must be dodged.)
       ...arcCollectibles([6, 15, 22, 32, 46, 52, 64, 72, 78, 86, 95], [AIR, LANE - 1]),
       // Roses floating inside the breeze currents — grabbed mid-glide.
       { x: 41, y: 9, ch: "o" },
       { x: 43, y: 8, ch: "o" },
-      { x: 89, y: 9, ch: "o" },
-      { x: 90, y: 7, ch: "o" },
+      // Second breeze: on a single glide line (row 8) so one pass sweeps all three —
+      // the old scatter across rows 7-9 was impossible to clear in one crossing.
+      { x: 89, y: 8, ch: "o" },
+      { x: 90, y: 8, ch: "o" },
       { x: 91, y: 8, ch: "o" },
       // The pergola balcony's rose trail (a one-way bonus route, bot-invisible).
       { x: 62, y: 6, ch: "o" },

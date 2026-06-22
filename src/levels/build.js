@@ -669,7 +669,7 @@ function makeCollectible(cx, cy, theme) {
     "collectible",
     { baseY: cy, t: k.rand(0, Math.PI * 2) },
   ]);
-  // Soft themed aura so the pickup reads as precious (spec §3 juiciness). Pure decoration.
+  // Soft themed aura so the pickup reads as precious (juiciness). Pure decoration.
   const halo = item.add([
     k.circle(20),
     k.color(...(theme.collectibleGlow || PALETTE.gold)),
@@ -690,7 +690,7 @@ function makeCollectible(cx, cy, theme) {
   sprite.frame = Math.floor(k.rand(0, 6));
   item.onUpdate(() => {
     item.t += k.dt() * 3;
-    item.pos.y = item.baseY + Math.sin(item.t) * 5; // a touch more bob than before (spec §4)
+    item.pos.y = item.baseY + Math.sin(item.t) * 5; // a touch more bob than before
     halo.opacity = 0.12 + 0.12 * (0.5 + 0.5 * Math.sin(item.t * 1.6)); // gentle flicker
   });
   return item;
@@ -902,7 +902,7 @@ function makeGoal(cx, cy, theme) {
     k.anchor("center"),
     k.z(3),
   ]);
-  // Rising motes along the beam — a little magic at the level's end (spec §3). Scene-scoped
+  // Rising motes along the beam — a little magic at the level's end. Scene-scoped
   // via k.loop (stops + cleans up on scene change); pure decoration, no collider.
   const moteCol = theme.goal || PALETTE.gold;
   k.loop(0.3, () => {

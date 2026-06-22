@@ -1,4 +1,4 @@
-// insertCoin.js — the "Insert Coin" death overlay (Specifiche_Polishing §1).
+// insertCoin.js — the "Insert Coin" death overlay.
 //
 // Pure DOM: the spec requires an HTML overlay sovrapposto al canvas, NOT a Kaplay
 // object, so it stays out of the game's collision/render tree entirely. The game scene

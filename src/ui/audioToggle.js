@@ -1,5 +1,5 @@
 // audioToggle.js — the two top-right toggle buttons for the Music and SFX buses
-// (Specifiche_Polishing §4, extended). 🎵 silences the looping background music; 🔊 silences
+// (extended). 🎵 silences the looping background music; 🔊 silences
 // the gameplay sound effects. Each reflects + persists its bus state (src/audio.js) so the
 // choice survives reloads. Bound once at startup (like the touch buttons), so both work on
 // every scene. Markup lives in index.html.

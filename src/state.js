@@ -94,7 +94,7 @@ export function resetProgress() {
   }
 }
 
-// --- "Insert Coin" meta-game (Specifiche_Polishing §1) ------------------------
+// --- "Insert Coin" meta-game ------------------------
 // The running tab of "debiti": every failure costs 500 Coccoline, tracked on TWO counters:
 //   - "totaleCoccoline" (exact key from the spec): the lifetime grand total, never reset —
 //     the historical line on the finale receipt (a bigger number is part of the joke).

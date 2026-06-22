@@ -79,14 +79,19 @@ export const LEVEL_6 = {
       { x: 108, w: 4, h: 2 },
       { x: 112, w: 14, h: 3 },
     ],
-    // Chandelier mounts (the ceiling slab each chain hangs from) + the minstrel step.
-    // Steps/mounts sit 3+ cells above the walkers — outside the bot's step probe.
+    // Chandelier mounts (the ceiling slab each chain hangs from). They sit 3+ cells above
+    // the walkers — outside the bot's step probe — and stay solid (no head-room conflict).
     platforms: [
       { x: 32, y: 7, w: 1 }, // mount, chandelier 1
       { x: 80, y: 7, w: 1 }, // mount, chandelier 2
       { x: 118, y: 3, w: 1 }, // mount, chandelier 3 (over the staircase top)
-      { x: 83, y: 9, w: 1 }, // step up to the minstrel ledge
     ],
+    // Step up to the minstrel ledge: a one-way ledge (#) at row10, to the RIGHT of the
+    // chandelier's swing (the bob sweeps ~x77-83), so it's reachable from the ground in a
+    // single 2-cell hop, then a second hop onto the crumble ledge. Semisolid so she passes
+    // under it on the lane without being walled in. (The old solid step at x83,y9 sat 3
+    // cells up — unreachable without a double jump — and inside the pendulum's arc.)
+    semisolids: [{ x: 84, y: 10, w: 1 }],
     items: [
       { x: 2, y: LANE, ch: "@" },
       { x: 124, y: 8, ch: ">" }, // the ballroom doors, atop the staircase
@@ -112,6 +117,7 @@ export const LEVEL_6 = {
       // Steel spike racks on the flagstones.
       { x: 12, y: LANE, ch: "^" },
       { x: 46, y: LANE, ch: "^" },
+      { x: 96, y: LANE, ch: "^" }, // on the flat approach to the grand staircase (banked at x90)
       { x: 101, y: LANE, ch: "^" },
       // A bat over the hall (kept clear of ravine jump-arcs and chandelier hop zones —
       // an air enemy there either kills the arc or vetoes the bot's needed hop).
@@ -126,7 +132,10 @@ export const LEVEL_6 = {
       // staircase top is flat — no required jump under it, so the bot can sneak past
       // between dives).
       { x: 122, y: 4, ch: "G" },
-      // Star power-up before the gauntlet — blow through chandelier 2 invincible.
+      // Star power-up before the gauntlet — blow through chandelier 2 invincible. Load-bearing
+      // for reachability: pendulum 2 + the armored ghost is a timing gate the autoplay bot can't
+      // thread unaided (it death-loops here without it). Kept by design, but its window is now
+      // shorter (POWERUP.DURATION 7→5s) so it's far less of a "win button" for a human.
       { x: 74, y: LANE, ch: "*" },
       ...arcCollectibles([6, 15, 26, 38, 44, 54, 68, 76, 86, 94], [AIR, LANE - 1]),
       // Goblets up the staircase.

@@ -1,4 +1,4 @@
-// level1.js — "Foresta Incantata" (spec §4, Livello 1 — the tutorial).
+// level1.js — "Foresta Incantata" (Livello 1 — the tutorial).
 // Pure DATA: a tile map + a colour theme. The generic builder in build.js turns this
 // into game objects. Legend: see build.js.
 //
@@ -25,7 +25,7 @@ export const LEVEL_1 = {
   name: "Foresta Incantata",
   tileSize: 64,
 
-  // Bosco magico: verde scuro, alberi alti (spec §4).
+  // Bosco magico: verde scuro, alberi alti.
   theme: {
     decor: "forest", // background style (see game.js drawBackground)
     collectibleIcon: "🍎", // HUD icon for the golden apples
@@ -75,9 +75,8 @@ export const LEVEL_1 = {
       { x: 94, w: 8, h: 1 },
       { x: 102, w: 18, h: 2 },
     ],
-    platforms: [
-      { x: 46, y: LANE, w: 2 }, // stepping-bridge over the develop ravine
-    ],
+    // (The old stepping-bridge over the x46 ravine is gone: the develop gap is now a real
+    // 2-cell jump — landing practice graduates to an actual leap, raising the floor.)
     // One-way high routes: the bonus perch (the spring at x29 launches her UP THROUGH it and
     // she lands on top — a solid slab here would block the bounce from below), the twist route
     // (launched onto by the spring at x52, carries her over both ravines), then the secret
@@ -94,22 +93,24 @@ export const LEVEL_1 = {
       { x: 29, y: LANE, ch: "M" },
       { x: 52, y: LANE, ch: "M" },
       { x: 72, y: LANE, ch: "M" },
-      // Checkpoints: before the twist, before the canopy, before the climb.
+      // Checkpoints thinned to two (a death now costs more progress): before the twist and
+      // before the climb. The old mid x68 flag is gone — the canopy is a bonus route, so the
+      // x49→x88 stretch is banked only at its ends.
       { x: 49, y: LANE, ch: "F" },
-      { x: 68, y: LANE, ch: "F" },
       { x: 88, y: LANE, ch: "F" },
       // Forest critters: a couple of ground crabs and a circling crow — the enchanted wood
       // isn't empty anymore. Placed on flat stretches, clear of jump arcs and the canopy drop.
       { x: 7, y: LANE, ch: "c" }, // greets her just past the spawn
       { x: 64, y: LANE, ch: "c" }, // patrols before the canopy
+      { x: 110, y: 9, ch: "c" }, // a final guard on the flat summit, just before the goal
       { x: 32, y: AIR, ch: "f" }, // a crow over the develop stretch
       // Thorns: one per stretch, clear of ravine edges, spring landings and the canopy drop.
       { x: 12, y: LANE, ch: "^" },
       { x: 42, y: LANE, ch: "^" }, // moved off the x29 spring's (now higher) bounce landing
       { x: 76, y: LANE, ch: "^" },
       { x: 98, y: 10, ch: "^" }, // on the first terrace's surface
-      // Star power-up on the lane: a taste of invincibility before the twist.
-      { x: 40, y: LANE, ch: "*" },
+      // (No lane star before the twist anymore — the develop crabs/thorns now bite. The
+      // canopy's secret star at x75 stays as the optional reward for the high route.)
       // Apples along the run (rows 9–10, grabbed mid-jump).
       ...arcCollectibles([8, 16, 23, 32, 44, 64, 86], [AIR, LANE - 1]),
       // Bonus apples: the spring perch, the high route, and the climb.

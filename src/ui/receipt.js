@@ -1,4 +1,4 @@
-// receipt.js — finale "Scontrino" + WhatsApp payoff (Specifiche_Polishing §2).
+// receipt.js — finale "Scontrino" + WhatsApp payoff.
 //
 // Shows this adventure's Coccoline bill (plus the lifetime grand total as a separate
 // line) on a paper-receipt card and a "Paga il Debito!" button that opens WhatsApp with

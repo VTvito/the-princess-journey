@@ -169,7 +169,7 @@ body {
   }
 }
 
-/* --- Audio toggles (spec §4) ------------------------------------------------
+/* --- Audio toggles ------------------------------------------------
    Two top-right circular buttons (Music 🎵 + SFX 🔊), same translucent style as the
    touch controls. #music-toggle sits just left of #audio-toggle. */
 #audio-toggle,
@@ -469,7 +469,7 @@ body.playing #pause-toggle {
   margin-top: 14px;
 }
 
-/* --- Scene-transition fade (spec §4) ---------------------------------------- */
+/* --- Scene-transition fade ---------------------------------------- */
 #fade {
   position: fixed;
   inset: 0;

@@ -30,7 +30,7 @@ export function addSkinLayers(parent, keys = []) {
  * Spawn the player.
  * @param {{sprite:string}} char  the chosen character (from CHARACTERS)
  * @param {import("../../vendor/kaplay-3001.0.19.mjs").Vec2} pos spawn position
- * @param {string[]} skinKeys  sprite keys to layer on top of the base body (spec §3),
+ * @param {string[]} skinKeys sprite keys to layer on top of the base body,
  *   in paint order (e.g. ["skirt"] on level 2). Each is a 64×96 transparent overlay.
  * @param {{accelTime?:number}} [feel]  per-level feel overrides (e.g. an icy level passes
  *   a longer accelTime so the heroine slides into and out of her run)
@@ -67,7 +67,7 @@ export function makePlayer(char, pos, skinKeys = [], feel = {}) {
   };
   player.play("idle");
 
-  // Squash & stretch (spec §3). A squash factor eases back to neutral each frame and gets
+  // Squash & stretch. A squash factor eases back to neutral each frame and gets
   // "kicked" on jump (tall + thin) and on landing (wide + short); the rendered scale is
   // BASE * squash, so children (skins) inherit it. Magnitudes are modest and vertical-
   // dominant so the brief change to the area() collider can't cause an unfair hazard hit.

@@ -1,8 +1,8 @@
 // game.js — plays the current level. Loads the tile map for getCurrentLevel(), follows
-// the player with a clamped camera, wires the casual rules from spec §4 (touch a hazard
+// the player with a clamped camera, wires the casual rules (touch a hazard
 // or an enemy, or fall into a ravine → respawn at the start; collect themed pickups), and
 // on reaching the goal runs the reward flow: unlock a skin, advance progress, continue to
-// the next level with the new skin layered on (spec §3).
+// the next level with the new skin layered on.
 
 import { k } from "../kaplayCtx.js";
 import {
@@ -53,7 +53,7 @@ function focusCanvas() {
   canvas?.focus?.();
 }
 
-// Checkpoint memory (spec Phase 4): survives the k.go("game") restart that the Insert
+// Checkpoint memory (Phase 4): survives the k.go("game") restart that the Insert
 // Coin flow uses, but resets when the level changes or the scene is entered fresh from
 // the menu (so "Nuova partita" can never inherit a stale checkpoint).
 let checkpointAt = null;
@@ -109,7 +109,7 @@ export function registerGameScene() {
     respawningFromDeath = false;
     const startPos = checkpointAt ? k.vec2(checkpointAt.x, checkpointAt.y) : spawn;
 
-    // The heroine, wearing every skin unlocked so far (spec §3). z above the tiles.
+    // The heroine, wearing every skin unlocked so far. z above the tiles.
     // def.feel lets a level tweak the handling (e.g. the icy level's longer accel ramp).
     const player = makePlayer(char, startPos, unlockedSkinKeys(level), def.feel || {});
     player.use(k.z(10));
@@ -135,7 +135,7 @@ export function registerGameScene() {
       setCam(k.vec2(Math.round(camX), Math.round(camY)));
     });
 
-    // --- Failure flow (spec §1: no silent respawn — every failure accrues a debt) ---
+    // --- Failure flow (no silent respawn — every failure accrues a debt) ---
     // Touching a lethal obstacle or falling off the world freezes the heroine and shows a
     // DOM "Insert Coin" overlay; inserting 500 Coccoline restarts THIS level from the start
     // (skins persist, since they're derived from the saved level in state — not reset here).
@@ -154,7 +154,7 @@ export function registerGameScene() {
       if (dbg) dbg.deaths += 1;
       player.setAnim("hurt"); // the "ops" face — set before pausing freezes updates
       player.paused = true; // freeze the heroine behind the overlay
-      sfx("oops"); // gentle "you slipped" cue (no harsh game-over — spec §1)
+      sfx("oops"); // gentle "you slipped" cue (no harsh game-over)
       resetInput();
       showInsertCoin(() => {
         sfx("coin"); // arcade-coin chime as the debt is banked
@@ -206,7 +206,7 @@ export function registerGameScene() {
         k.destroy(enemy);
         if (stomping) {
           player.vel.y = -PHYSICS.STOMP_BOUNCE; // bounce back up off a stomp
-          // Impact weight: a tiny freeze + shake + dust make the stomp land (spec §3).
+          // Impact weight: a tiny freeze + shake + dust make the stomp land.
           hitStop();
           screenShake(wasBoss ? 6 : 3);
           dustPuff(enemy.pos);
@@ -237,12 +237,33 @@ export function registerGameScene() {
 
     // Breeze columns (garden level): a horizontal petal current — extra forward drift,
     // and the fall is softened to a glide so long assisted jumps feel like floating.
+    // Anti-wedge: BREEZE_FALL holds her height so a glide can't sink into the gap — but if
+    // she enters at lane level the same hold can pin her in the far corner (pushed into the
+    // landing wall, unable to fall, and above the kill-plane so she never dies). We flag the
+    // overlap here and, in the onUpdate below, nudge her up when she stalls against a wall.
+    let inBreeze = false;
+    let breezePrevX = player.pos.x;
+    const BREEZE_UNSTICK_LIFT = 240; // px/s upward applied only while wedged (no free glide)
     player.onCollideUpdate("breeze", () => {
       if (finished || dead) return;
+      inBreeze = true;
       player.move(MECHANICS.BREEZE_PUSH, 0);
       if (player.vel.y > MECHANICS.BREEZE_FALL) {
         player.vel.y += (MECHANICS.BREEZE_FALL - player.vel.y) * (1 - Math.exp(-k.dt() * 4));
       }
+    });
+    // Frame-to-frame stall check (robust to the breeze being many small cells, so the
+    // collide handler can fire several times per frame): if she's airborne inside a breeze
+    // yet not drifting at all, she's wedged against the far wall — lift her a touch so she
+    // clears the ledge lip and the current carries her on instead of freezing in the corner.
+    player.onUpdate(() => {
+      if (inBreeze && !finished && !dead && !player.isGrounded()) {
+        if (Math.abs(player.pos.x - breezePrevX) < 1 && player.vel.y > -BREEZE_UNSTICK_LIFT) {
+          player.vel.y = -BREEZE_UNSTICK_LIFT;
+        }
+      }
+      breezePrevX = player.pos.x;
+      inBreeze = false;
     });
 
     // Star power-up: grant a window of invincibility + points, with a pulsing aura on the
@@ -380,7 +401,7 @@ export function registerGameScene() {
     let collected = 0;
     player.onCollide("collectible", (item) => {
       if (finished || dead) return;
-      // Confetti pop + chime at the pickup (spec §3).
+      // Confetti pop + chime at the pickup.
       confettiBurst(item.pos, [
         theme.collectible,
         theme.collectibleAccent || PALETTE.cream,
@@ -481,7 +502,7 @@ export function registerGameScene() {
   });
 }
 
-// --- Themed backdrop (spec §2): three generated parallax image layers per theme (sky / mid /
+// --- Themed backdrop: three generated parallax image layers per theme (sky / mid /
 // near) plus the signature ambient particles. The static silhouette polygons were replaced by
 // the mid/near images; the particle systems (motes / bubbles / snow) are kept as juice.
 // Exported so the menu can reuse the same living backdrop (src/scenes/menu.js). ---
@@ -502,7 +523,7 @@ function getCamX() {
   return p && Number.isFinite(p.x) ? p.x : GAME_W / 2;
 }
 
-// --- Parallax (spec §2/§3): the "<decor>_mid" and "<decor>_near" images, screen-fixed and
+// --- Parallax: the "<decor>_mid" and "<decor>_near" images, screen-fixed and
 // bottom-aligned, scrolled at a fraction of camera speed (0.5 / 0.8) for depth. Each image is
 // 1920px wide; we lay down enough copies to cover the viewport and wrap them modulo the strip
 // span every frame, so the silhouettes tile seamlessly across any level width. ---

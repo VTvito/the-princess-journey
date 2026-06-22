@@ -42,7 +42,7 @@ for (const { file, look } of HEROINES) writeSprite(file, buildSheet((p) => paint
 writeSprite("logo.png", paintLogo());
 
 // Clothing skins — same sheet layout, same pose records, so the overlay layers stay in
-// frame-sync with the body by construction (spec §3).
+// frame-sync with the body by construction.
 for (const { file, kind, color } of SKIN_LAYERS) writeSprite(file, buildSheet((p) => paintSkin(kind, color, p)));
 
 // World sprites as animation strips (frame counts in src/animspec.js WORLD_SHEETS):
