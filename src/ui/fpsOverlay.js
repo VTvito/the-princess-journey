@@ -17,7 +17,26 @@
 // markup in index.html, no rules in style.css), is pointer-events:none, and never touches
 // gameplay/collision logic.
 
-import { k } from "../kaplayCtx.js";
+import { k, maxFPS } from "../kaplayCtx.js";
+
+// Count live game objects (recursively) — a cheap proxy for per-scene draw-call load, to tell a
+// GPU-bound level (many objects) apart from a pacing problem. Walked only on the 250ms render
+// tick below, so the cost is negligible.
+function countObjects() {
+  let n = 0;
+  const walk = (o) => {
+    for (const c of o.children || []) {
+      n++;
+      walk(c);
+    }
+  };
+  try {
+    walk(k.getTreeRoot());
+  } catch {
+    // engine/scene not ready yet
+  }
+  return n;
+}
 
 /** True when the page was opened with ?fps (any value) or #fps. */
 function enabled() {
@@ -81,8 +100,9 @@ export function bindFpsOverlay() {
       "— FPS DEBUG —",
       "fps     : " + Math.round(fps),
       "worst   : " + worst.toFixed(1) + " ms",
+      "objects : " + countObjects(),
       "coarse  : " + (coarse ? "yes" : "no"),
-      "maxFPS  : " + (coarse ? "60" : "—"),
+      "maxFPS  : " + (maxFPS ?? "uncapped"), // reflects the ?maxfps= override
       "dpr     : " + (window.devicePixelRatio || 1),
     ].join("\n");
     frames = 0;
