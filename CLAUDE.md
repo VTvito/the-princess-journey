@@ -35,10 +35,24 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
   clear it; keep that invariant or the D-pad reappears over the menu.
 - **Fit:** `html, body` use `100dvh`; interactive UI uses `env(safe-area-inset-*)`. Don't
   revert to `height: 100%` (it clips under the iOS toolbar).
-- **Mobile render density:** touch devices (`pointer: coarse`) use `pixelDensity: 1`
-  (`src/kaplayCtx.js`); desktop keeps `min(dpr, 2)`. On a 3× iPhone the old 2× backbuffer was
-  ~4× the fill-rate and made the game stutter — density 1 is smooth and, on nearest-neighbour
-  pixel art, visually near-identical. Emulation can't measure this; confirm FPS on a real iPhone.
+- **Mobile render density:** touch devices use `pixelDensity: 1` (`src/kaplayCtx.js`); desktop
+  keeps `min(dpr, 2)`. On a 3× iPhone the old 2× backbuffer was ~4× the fill-rate and made the
+  game stutter — density 1 is smooth and, on nearest-neighbour pixel art, visually near-identical.
+  Touch is detected as `(pointer: coarse)` **OR** `navigator.maxTouchPoints > 0` (`coarsePointer`,
+  exported) — the `maxTouchPoints` fallback is load-bearing: some iOS configs misreport `coarse`,
+  and without the mobile path (density 1 + the two perf wins below) an iPhone crawls. Confirm on a
+  real device with `?fps=1` (overlay shows fps / worst-frame / drawn-vs-total / maxFPS / dpr; the
+  cap is URL-overridable via `?maxfps=N`, `0`=uncapped, for on-device A/B).
+- **Mobile fluidity = draws AND colliders, not the fps cap:** on iOS WebKit the per-frame CPU
+  cost of hundreds of objects (transform + collision) tanked a wide level to ~11fps while desktop
+  was fine; the 60-cap was NOT the cause (capped vs uncapped measured identical). Two fixes, both
+  load-bearing — don't undo them: (1) **off-screen culling** (`src/scenes/game.js`) toggles
+  `hidden` on scenery/pickups/enemies > ¾-screen from the heroine — `hidden` skips DRAW only, so
+  colliders/AI keep working; (2) **merged solid colliders** — `=` tiles render as visual-only
+  `"scenery"` sprites (no per-tile body) and `buildSolidColliders` (`src/levels/build.js`) greedy-
+  meshes them into a few big static bodies (culling alone didn't help here: it skips drawing, not
+  collision). Net: same look + hitboxes, ~10× fewer draws and bodies. **Never re-add a per-tile
+  `area()`/`body()` to `=` tiles** — it reintroduces the collision-cost regression.
 - **Emulation ≠ device:** Edge/Chromium can't reproduce WebKit audio quirks or the notch
   safe-area — real iOS audio/safe-area must be verified on a physical iPhone.
 - **Dev handle:** `window.__pj` (engine + live virtual `input`) is attached **only on localhost**

@@ -56,6 +56,9 @@ export function buildLevel(def) {
   const cols = rows.reduce((m, r) => Math.max(m, r.length), 0);
   const worldW = cols * TILE;
   const worldH = rows.length * TILE;
+  // Boolean map of static "=" cells, filled during the pass below and greedy-meshed into a few
+  // big colliders afterward (buildSolidColliders) — far fewer static bodies for mobile collision.
+  const solidGrid = rows.map(() => new Array(cols).fill(false));
 
   let spawn = null;
   let collectiblesTotal = 0;
@@ -83,14 +86,17 @@ export function buildLevel(def) {
           else if (airAbove && airRight && !airLeft) frame = "ground_top_r";
           else if (airAbove) frame = (c * 7 + r) % 3 === 0 ? "ground_top_2" : "ground_top";
           else frame = (c * 5 + r * 3) % 4 === 0 ? "ground_fill_2" : "ground_fill";
+          // VISUAL only — no per-tile collider. All "=" cells are recorded in solidGrid and
+          // greedy-meshed into a few big static bodies after the pass (buildSolidColliders), so
+          // the engine isn't running collision over hundreds of tile bodies every frame (the
+          // mobile fluidity killer). "scenery" tag → drawn-only + off-screen culled like caps.
           k.add([
             k.sprite(frame),
             k.pos(x, y),
-            k.area(),
-            k.body({ isStatic: true }),
             k.color(...theme.solid),
-            "solid",
+            "scenery",
           ]);
+          solidGrid[r][c] = true;
           // Bright grass/snow cap on exposed top surfaces: a transparent pixel overlay with
           // blades, tinted theme.solidTop (keeps the faithful two-tone surface look).
           if (airAbove) {
@@ -175,6 +181,13 @@ export function buildLevel(def) {
     }
   });
 
+  // Merge the static "=" tiles into as few colliders as possible (greedy meshing). On iOS
+  // WebKit the engine running collision over ~hundreds of individual tile bodies every frame was
+  // the dominant fluidity cost (desktop didn't care; culling only skips DRAWING hidden tiles, not
+  // their collision). Consolidating contiguous cells into big rectangles keeps the exact same
+  // hitboxes with ~10× fewer static bodies.
+  buildSolidColliders(solidGrid, TILE);
+
   // Moving platforms (data-driven, not ASCII — see the legend note at the top).
   for (const m of def.movers || []) makeMover(m, TILE, theme);
 
@@ -188,6 +201,39 @@ export function buildLevel(def) {
 
   if (!spawn) spawn = k.vec2(TILE * 1.5, 0); // defensive fallback if a level omits "@"
   return { spawn, worldW, worldH, collectiblesTotal };
+}
+
+// Greedy-mesh a boolean grid of solid cells into a minimal set of static box colliders. Each
+// emitted body is invisible (no sprite — the per-tile "scenery" sprites carry the visuals) and
+// tagged "solid", so the player body lands/blocks exactly as on the old per-tile bodies but the
+// engine checks a handful of bodies per frame instead of hundreds. See the call site for why.
+function buildSolidColliders(grid, TILE) {
+  const rows = grid.length;
+  const used = grid.map((row) => row.map(() => false));
+  for (let r = 0; r < rows; r++) {
+    const cols = grid[r].length;
+    for (let c = 0; c < cols; c++) {
+      if (!grid[r][c] || used[r][c]) continue;
+      // Widen right while the row stays solid + unused…
+      let w = 1;
+      while (c + w < cols && grid[r][c + w] && !used[r][c + w]) w++;
+      // …then grow down while every column of the [c, c+w) span is solid + unused.
+      let h = 1;
+      grow: while (r + h < rows) {
+        for (let cc = c; cc < c + w; cc++) {
+          if (!grid[r + h][cc] || used[r + h][cc]) break grow;
+        }
+        h++;
+      }
+      for (let rr = r; rr < r + h; rr++) for (let cc = c; cc < c + w; cc++) used[rr][cc] = true;
+      k.add([
+        k.pos(c * TILE, r * TILE),
+        k.area({ shape: new k.Rect(k.vec2(0, 0), w * TILE, h * TILE) }),
+        k.body({ isStatic: true }),
+        "solid",
+      ]);
+    }
+  }
 }
 
 // --- Decor props: pure scenery (no area/body), sprite keys from theme.props ------------
