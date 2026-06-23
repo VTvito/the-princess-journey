@@ -5,7 +5,7 @@ A personalized 2D platformer gift, built with [Kaplay](https://kaplayjs.com/)
 step, no CDN at runtime).
 
 The full journey is playable: a responsive landscape canvas, a main menu with character
-selection (Anna / Belle / Jasmine), **six** themed platformer levels with a
+selection (Anna / Sognatrice / Avventuriera), **six** themed platformer levels with a
 clothing-skin progression, and the **Sala da Ballo** finale — all with `localStorage`
 progress. It plays as an **arcade run**: you start with **3 lives** (+1 heart per level), a
 death costs a life (and 500 Coccoline), and losing them all restarts the journey from level 1.

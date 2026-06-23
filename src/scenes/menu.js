@@ -261,11 +261,14 @@ export function registerMenuScene() {
       ]);
 
       card.add([
-        k.text(char.description, { size: 17, width: cardW - 36, align: "center", lineSpacing: 4 }),
+        // Long-form romantic blurb: the pixel UI font is hard to read at this size for running
+        // prose (same call the finale letter makes — src/scenes/finale.js), so render the
+        // description in sans-serif at full contrast. Name + tagline above stay pixel for style.
+        k.text(char.description, { size: 18, width: cardW - 36, align: "center", lineSpacing: 5, font: "sans-serif" }),
         k.anchor("center"),
         k.pos(0, 138),
         k.color(...PALETTE.deepBlue),
-        k.opacity(0.8),
+        k.opacity(0.95),
       ]);
 
       // Focus = "she steps forward": the hovered heroine breaks into her walk cycle and the

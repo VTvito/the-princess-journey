@@ -61,6 +61,9 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
   `src/assets.js`, mirrored via `@font-face` in `style.css`). It has **no emoji/★ glyphs**, so a
   `k.text()` containing 👑 🍎 ✨ ★ must pass `font: "sans-serif"` per object (DOM falls back
   per-glyph on its own). The HUD name/level sit at x=88 to clear the top-left ⏸ pause button.
+  **Long-form prose also overrides to `font: "sans-serif"`** — the pixel font is hard to read for
+  running text at small sizes, so the finale letter (`src/scenes/finale.js`) and the menu character
+  descriptions (`src/scenes/menu.js`) use sans-serif; short labels (name/tagline/buttons) stay pixel.
 - **Pause = global freeze:** Esc / ⏸ sets `k.getTreeRoot().paused` and shows a **DOM** overlay
   (`src/ui/pauseMenu.js`, settings stacks above via `src/ui/settings.js`) so its buttons stay
   clickable while the world is frozen. Every exit (resume/restart/menu) unfreezes first, and the

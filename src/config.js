@@ -32,20 +32,20 @@ export const CHARACTERS = [
     color: PALETTE.sky,
   },
   {
-    // id + sprite restano "sognatrice" (compatibilità localStorage + asset); cambia solo il
-    // nome mostrato in nome "disney-centrico": abito dorato + rose → Belle.
+    // Nome-concetto ORIGINALE (non un personaggio Disney): evita problemi di marchio essendo il
+    // gioco pubblico. id + sprite restano "sognatrice" (compatibilità localStorage + asset).
     id: "sognatrice",
-    name: "Belle",
+    name: "Sognatrice",
     tagline: "Anima Gentile",
     description: "Sogna l'amore vero tra le rose del castello incantato.",
     sprite: "sognatrice",
     color: [240, 198, 116],
   },
   {
-    // id + sprite restano "avventuriera"; nome mostrato → Jasmine (palette terracotta del
-    // deserto, spirito libero).
+    // Nome-concetto ORIGINALE (non un personaggio Disney). id + sprite restano "avventuriera";
+    // palette terracotta del deserto, spirito libero.
     id: "avventuriera",
-    name: "Jasmine",
+    name: "Avventuriera",
     tagline: "Spirito Libero",
     description: "Il suo cuore libero corre dove la porta il vento del deserto.",
     sprite: "avventuriera",
