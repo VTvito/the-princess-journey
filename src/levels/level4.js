@@ -8,7 +8,7 @@
 // the long shelf) → twist (stalactite timing on ice) → climax (two off-phase movers
 // over the great chasm, stalactites falling between them).
 // Secret: an icy SHELF floating over the ridge, where a second roller guards a hoard of
-// crystals — reached by a stepping slab from the ridge top.
+// crystals — reached via a feather (high-jump) grabbed above the ridge, then a stepping slab.
 
 import { composeMap, arcCollectibles, laneFor, airFor } from "./mapkit.js";
 

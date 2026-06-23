@@ -6,8 +6,8 @@
 // Arc: intro (basics + a spring-served bonus reef) → develop (the first moving platform
 // — wait for it, ride it) → twist (a second, faster mover + crab pressure) → climax
 // (a current of rising water carries her up and over the last chasm).
-// Secrets: a crumble ledge with pearls over the twist stretch, and a narrow updraft
-// CHIMNEY continuing above the climax shaft up to a pearl ring on a one-way perch.
+// Secrets: a crumble ledge with pearls over the twist stretch, and an updraft CHIMNEY
+// (the full-width shaft continues up) carrying her to a pearl ring on a one-way perch.
 
 import { composeMap, arcCollectibles, laneFor, airFor } from "./mapkit.js";
 
