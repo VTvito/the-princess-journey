@@ -7,7 +7,8 @@ step, no CDN at runtime).
 The full journey is playable: a responsive landscape canvas, a main menu with character
 selection (Anna / Sognatrice / Avventuriera), **six** themed platformer levels with a
 clothing-skin progression, and the **Sala da Ballo** finale — all with `localStorage`
-progress. It plays as an **arcade run**: you start with **3 lives** (+1 heart per level), a
+progress. It plays as an **arcade run**: you start with **3 lives** (a bonus heart waits on
+Livelli 3 e 5), a
 death costs a life (and 500 Coccoline), and losing them all restarts the journey from level 1.
 Finishing posts your score to a **global leaderboard**.
 
@@ -249,7 +250,7 @@ Later phases add more mechanic tiles — springs, crumbling platforms, updrafts,
 rollers, breeze columns, pendulum chandeliers, the **armored swooper** (`S`, a 2-hp diving
 guardian that enrages on a stomp), the **feather** (`+`, a high-jump power-up on the bonus
 routes), the **hopper** (`h`, a Rospo Saltatore that hops in timed arcs — from Livello 3 on) and
-the **heart** (`H`, +1 vita, one per level). See `src/levels/build.js` for the full legend and
+the **heart** (`H`, +1 vita, only on Livelli 3 e 5). See `src/levels/build.js` for the full legend and
 `MECHANICS` / `POWERUP` / `LIVES` / `ENEMIES` in `src/config.js` for the tunables.
 
 - **Livello 1 — Foresta Incantata**: a running lane, ravines, brambles, **forest critters**
@@ -260,7 +261,10 @@ the **heart** (`H`, +1 vita, one per level). See `src/levels/build.js` for the f
 - **Livello 5 — Giardino del Crepuscolo**: a dusk garden of roses 🌹, **breeze columns** of
   petals that carry you forward and soften the fall (long assisted glides).
 - **Livello 6 — Castello Reale**: the royal castle, goblets 🏆, swinging **pendulum
-  chandeliers** (lethal bobs with timed safe windows) and the **Gargoyle Custode**.
+  chandeliers** (lethal bobs with timed safe windows) and, at the top of the grand staircase,
+  the **Custode di Pietra** — a true multi-phase **final boss** that seals the ballroom doors
+  until you fell it: it hovers out of reach raining a ground shockwave (jump it) and falling
+  debris (dodge them), then dives into a window where a stomp wounds it — three hits to win.
 
 Touching a hazard or enemy, or falling into a ravine, costs **a life and 500 Coccoline** and
 respawns you (from the last checkpoint, if any) via the Insert-Coin overlay. Run out of lives
@@ -301,7 +305,8 @@ A "juiciness" + meta-game layer sits on top of the core game.
 All DOM/HTML is isolated in `index.html`, `style.css`, and `src/ui/`, so it never touches the
 collision logic in `game.js`:
 
-- **Arcade lives + Insert Coin.** You start with **3 lives** (+1 **heart** `H` per level). A
+- **Arcade lives + Insert Coin.** You start with **3 lives** (a bonus **heart** `H` waits on
+  Livelli 3 e 5). A
   failure freezes the heroine, banks **500 Coccoline** and spends a life; **Inserisci Coin**
   respawns you from the last checkpoint. At **0 lives** a **Game Over** overlay restarts the
   journey from level 1 with the score reset — but the Coccoline tab (`localStorage.totaleCoccoline`)

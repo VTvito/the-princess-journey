@@ -13,13 +13,13 @@
 //              "P" pendulum chandelier (anchor cell; the lethal bob swings below)
 //              "S" armored swooper (2-hp diving guardian — enrages on a stomp)
 //              "+" feather (high-jump power-up)   "H" heart (arcade life: +1 vita)
-//              "G" Gargoyle Custode (mini-boss: a 2x stone swooper with 3 hp)
+//              "G" final boss "Custode di Pietra" (Livello 6 climax: multi-phase, gates the goal)
 //              "@" spawn   ">" goal   " " air (a gap in the ground rows is a ravine)
 // Moving platforms are not ASCII: a level may add `movers: [{x,y,w,dx,dy,period,phase}]`
 // (cells; dx/dy = travel amplitude in cells) — see makeMover.
 
 import { k } from "../kaplayCtx.js";
-import { PALETTE, ENEMIES, HAZARDS, MECHANICS, PHYSICS, GAME_W } from "../config.js";
+import { PALETTE, ENEMIES, HAZARDS, MECHANICS, PHYSICS, GAME_W, BOSS } from "../config.js";
 import { sfx } from "../sfx.js";
 import { getHeartsTaken } from "../state.js";
 
@@ -125,9 +125,14 @@ export function buildLevel(def) {
         case "S":
           makeArmoredSwooper(x + TILE / 2, y + TILE / 2);
           break;
-        case "G":
-          makeGargoyle(x + TILE / 2, y + TILE / 2);
+        case "G": {
+          // Final boss: scan DOWN this column for the arena floor (first solid "=" cell) so the
+          // boss derives its hover/window heights from the real staircase top below it (makeBoss).
+          let fr = r;
+          while (fr < rows.length && (rows[fr]?.[c] ?? " ") !== "=") fr++;
+          makeBoss(x + TILE / 2, fr * TILE, theme);
           break;
+        }
         case "r":
           makeRoller(x + TILE / 2, y + TILE / 2);
           break;
@@ -465,72 +470,213 @@ function makeArmoredSwooper(cx, cy) {
   return makeSwooper(cx, cy, { hp: 2, tint: [120, 135, 162] });
 }
 
-// --- Gargoyle Custode (Fase 5 mini-boss): a stone swooper at double size with 3 hp.
-// Same dive pattern as makeSwooper, but each stomp (handled by the game scene via the
-// hp field) makes it dive faster and rest less. Defeating it is satisfying but OPTIONAL:
-// the cooldown between dives is the sneak-past window, so the critical path never requires
-// the fight.
-function makeGargoyle(cx, cy) {
-  const gargoyle = k.add([
-    k.rect(64, 56, { radius: 16 }),
-    k.opacity(0),
-    k.pos(cx, cy),
+// --- Final boss "Custode di Pietra" (Livello 6 climax). See config.BOSS for the full design
+// note. A bespoke, multi-phase guardian unlike every other enemy:
+//   • tagged "boss" (NOT "enemy") so its BODY is HARMLESS to touch — only the shockwave/debris
+//     it spawns (tagged "hazard") can hurt the heroine. This is the key softlock-proofing: she
+//     can never die just by being near it, only by failing to dodge its telegraphed attacks;
+//   • it runs a DETERMINISTIC phase loop (not player-position-driven), so the vulnerable window
+//     always comes around no matter where she stands — the fight is guaranteed winnable;
+//   • HOVER out of reach → TELEGRAPH → fire an attack (alternating ground SHOCKWAVE / falling
+//     DEBRIS) → DESCEND into a fixed-length vulnerable WINDOW → stomp to damage (the game scene's
+//     dedicated "boss" handler decrements hp) → ASCEND and repeat, faster (enrage) each hit.
+// `floorY` is the arena floor (top of the staircase) the boss positions itself against, so the
+// hover/window heights are derived from real geometry and stay tuned to the single-jump apex.
+function makeBoss(cx, floorY, theme) {
+  const attackY = floorY - BOSS.ATTACK_ABOVE_FLOOR; // hover height — out of stomp/contact reach
+  const windowY = floorY - BOSS.WINDOW_ABOVE_FLOOR; // descent height — stompable from the floor
+  const stoneArr = theme?.solid || [120, 108, 124]; // castle stone (falls back to grey-violet)
+  const gildArr = [196, 162, 96]; // gilded brow trim (castle gold)
+
+  const boss = k.add([
+    k.rect(BOSS.W, BOSS.H, { radius: 18 }),
+    k.opacity(0), // hitbox only; the visible guardian is the children below
+    k.pos(cx, attackY),
     k.anchor("center"),
-    k.area({ scale: 0.8 }),
-    k.z(4),
-    "enemy",
+    k.area({ scale: BOSS.AREA_SCALE }),
+    k.z(6),
+    "boss",
     {
-      hp: 3,
-      baseY: cy,
-      diving: false,
+      hp: BOSS.HP,
+      invulnerable: true, // damage is gated to the WINDOW phase (set false there)
+      phase: "hover", // hover → telegraph → recover → descend → window → ascend
       t: 0,
-      // Starts already "resting": a bold straight sprint slips past before the first
-      // dive (the sneak window — hesitating or jumping for the goblets gets punished;
-      // it also keeps the guardian optional).
-      cooldown: MECHANICS.SWOOP_COOLDOWN * 1.25,
-      // Per-instance dive tunables — the scene shortens them on each stomp (enrage).
-      swoopTime: MECHANICS.SWOOP_TIME * 1.15,
-      swoopCooldown: MECHANICS.SWOOP_COOLDOWN * 1.25,
+      bob: k.rand(0, Math.PI * 2),
+      attackKind: 0, // alternates 0 = shockwave, 1 = debris
     },
   ]);
-  // The swooper sprite at 2x, tinted stone-grey: the lantern-ghost reads as a carved
-  // guardian. Exposed as .art so the scene can flash it on a successful stomp.
-  const art = gargoyle.add([
-    k.sprite("swooper"),
+
+  // --- Primitive art: a hulking stone guardian with a gilded brow and glowing amber eyes ---
+  const bodyArt = boss.add([
+    k.rect(BOSS.W, BOSS.H, { radius: 18 }),
     k.anchor("center"),
     k.pos(0, 0),
-    k.scale(2),
-    k.color(150, 150, 170),
+    k.color(...stoneArr),
+    k.outline(4, k.rgb(26, 20, 32)),
+    k.z(0),
   ]);
-  art.play("float");
-  gargoyle.art = art;
-  gargoyle.baseTint = k.rgb(150, 150, 170); // wound flash resets to the stone tint
-  gargoyle.onUpdate(() => {
+  // Two stone horns on the crown.
+  boss.add([k.polygon([k.vec2(-46, -36), k.vec2(-26, -36), k.vec2(-40, -62)]), k.anchor("center"), k.pos(0, 0), k.color(...stoneArr), k.outline(3, k.rgb(26, 20, 32)), k.z(0)]);
+  boss.add([k.polygon([k.vec2(46, -36), k.vec2(26, -36), k.vec2(40, -62)]), k.anchor("center"), k.pos(0, 0), k.color(...stoneArr), k.outline(3, k.rgb(26, 20, 32)), k.z(0)]);
+  // Gilded brow band.
+  boss.add([k.rect(BOSS.W * 0.78, 10, { radius: 4 }), k.anchor("center"), k.pos(0, -20), k.color(...gildArr), k.z(1)]);
+  // Carved mouth.
+  boss.add([k.rect(44, 6, { radius: 3 }), k.anchor("center"), k.pos(0, 28), k.color(26, 20, 32), k.z(1)]);
+  // Amber eyes — glow brighter through the telegraph + the vulnerable window (the "tell").
+  const eyeL = boss.add([k.circle(9), k.anchor("center"), k.pos(-22, -2), k.color(255, 184, 74), k.z(2)]);
+  const eyeR = boss.add([k.circle(9), k.anchor("center"), k.pos(22, -2), k.color(255, 184, 74), k.z(2)]);
+
+  boss.bodyArt = bodyArt;
+  boss.baseStone = k.rgb(...stoneArr);
+
+  // The game scene calls this on a successful stomp: flash, then retreat. One hit per window
+  // (it closes the window and rises to attack again), so felling it always takes BOSS.HP windows.
+  boss.onStomped = () => {
+    bodyArt.color = k.rgb(255, 120, 120);
+    k.wait(0.16, () => { if (boss.exists()) bodyArt.color = boss.baseStone; });
+    boss.invulnerable = true;
+    boss.phase = "ascend";
+    boss.t = 0;
+  };
+
+  const enrage = () => 1 + (BOSS.HP - boss.hp) * BOSS.ENRAGE_K; // faster cadence/attacks as hp drops
+  const easeInOut = (f) => (f < 0.5 ? 2 * f * f : 1 - Math.pow(-2 * f + 2, 2) / 2);
+
+  boss.onUpdate(() => {
     const dt = k.dt();
-    const p = getPlayer();
-    if (!gargoyle.diving) {
-      gargoyle.pos.y = gargoyle.baseY + Math.sin(k.time() * 1.8) * 10; // heavy stone hover
-      const inRange = p && Math.abs(p.pos.x - gargoyle.pos.x) < MECHANICS.SWOOP_RANGE * 1.3;
-      // The stare-down: the dive timer only runs while she's in range, so EVERY approach
-      // gets the same window — sprint straight through and it never strikes; hesitate
-      // (or jump for the goblets) and the stone wakes.
-      if (inRange) gargoyle.cooldown -= dt;
-      if (inRange && gargoyle.cooldown <= 0) {
-        gargoyle.diving = true;
-        gargoyle.t = 0;
+    boss.t += dt;
+    boss.bob += dt;
+    const e = enrage();
+    switch (boss.phase) {
+      case "hover": {
+        boss.pos.y = attackY + Math.sin(boss.bob * 1.6) * 8; // heavy stone hover
+        eyeL.opacity = eyeR.opacity = 0.85;
+        if (boss.t >= BOSS.HOVER_TIME / e) { boss.phase = "telegraph"; boss.t = 0; }
+        break;
       }
-    } else {
-      gargoyle.t += dt;
-      const f = Math.min(1, gargoyle.t / gargoyle.swoopTime);
-      gargoyle.pos.y = gargoyle.baseY + Math.sin(f * Math.PI) * (MECHANICS.SWOOP_DROP * 1.25);
-      if (p) gargoyle.pos.x += Math.sign(p.pos.x - gargoyle.pos.x) * 60 * dt; // lean toward her
-      if (f >= 1) {
-        gargoyle.diving = false;
-        gargoyle.cooldown = gargoyle.swoopCooldown;
+      case "telegraph": {
+        // Wind-up: the eyes flash and it dips a touch so the attack is always announced.
+        const f = Math.min(1, boss.t / BOSS.TELEGRAPH);
+        eyeL.opacity = eyeR.opacity = 0.5 + 0.5 * Math.abs(Math.sin(boss.t * 18));
+        boss.pos.y = attackY + Math.sin(f * Math.PI) * 12;
+        if (boss.t >= BOSS.TELEGRAPH) {
+          if (boss.attackKind === 0) spawnShockwave(cx, floorY, e);
+          else spawnDebris(cx, floorY, boss.hp);
+          boss.attackKind ^= 1; // alternate next attack
+          boss.phase = "recover"; boss.t = 0;
+        }
+        break;
+      }
+      case "recover": {
+        boss.pos.y = attackY + Math.sin(boss.bob * 1.6) * 8;
+        eyeL.opacity = eyeR.opacity = 0.85;
+        if (boss.t >= BOSS.RECOVER / e) { boss.phase = "descend"; boss.t = 0; }
+        break;
+      }
+      case "descend": {
+        const f = Math.min(1, boss.t / BOSS.MOVE_TIME);
+        boss.pos.y = attackY + (windowY - attackY) * easeInOut(f);
+        if (f >= 1) { boss.pos.y = windowY; boss.phase = "window"; boss.t = 0; boss.invulnerable = false; }
+        break;
+      }
+      case "window": {
+        boss.pos.y = windowY + Math.sin(boss.bob * 3) * 4;
+        eyeL.opacity = eyeR.opacity = 0.6 + 0.4 * Math.abs(Math.sin(boss.t * 9)); // "stomp me" pulse
+        if (boss.t >= BOSS.WINDOW_TIME) { boss.invulnerable = true; boss.phase = "ascend"; boss.t = 0; }
+        break;
+      }
+      case "ascend": {
+        const f = Math.min(1, boss.t / BOSS.MOVE_TIME);
+        boss.pos.y = windowY + (attackY - windowY) * easeInOut(f);
+        if (f >= 1) { boss.pos.y = attackY; boss.phase = "hover"; boss.t = 0; }
+        break;
       }
     }
   });
-  return gargoyle;
+  return boss;
+}
+
+// The boss's ground SHOCKWAVE: two dusty bands race outward along the arena floor from under
+// the boss — JUMP them. Tagged "hazard" so the scene's existing hazard rule kills on touch
+// (unless star-invincible). Speed stays under RUN_SPEED so it's always jumpable, and it
+// despawns within its short life so it never lingers as an off-screen (culled) hazard.
+function spawnShockwave(cx, floorY, enrage) {
+  const speed = Math.min(BOSS.SHOCKWAVE_SPEED * enrage, BOSS.SHOCKWAVE_SPEED_CAP);
+  for (const dir of [-1, 1]) {
+    const wave = k.add([
+      k.rect(36, 30, { radius: 6 }),
+      k.pos(cx + dir * 18, floorY), // a small gap directly under the boss centre (fair spawn)
+      k.anchor("bot"),
+      k.area({ scale: 0.8 }),
+      k.color(196, 166, 120),
+      k.outline(2, k.rgb(70, 50, 34)),
+      k.opacity(0.95),
+      k.z(5),
+      "hazard",
+      "boss-attack", // distinguishes the boss's transient hazards from a level's static spikes
+      { dir, age: 0 },
+    ]);
+    wave.onUpdate(() => {
+      wave.age += k.dt();
+      wave.pos.x += wave.dir * speed * k.dt();
+      wave.opacity = 0.95 * Math.max(0, 1 - wave.age / BOSS.SHOCKWAVE_LIFE);
+      if (wave.age >= BOSS.SHOCKWAVE_LIFE) k.destroy(wave);
+    });
+  }
+}
+
+// The boss's falling DEBRIS volley: telegraphed target markers on the floor, then rocks drop on
+// them. A guaranteed 3-slot SAFE LANE is always left clear so the volley is dodgeable by moving
+// (never a wall of rocks). More rocks as the boss is wounded (hp lower → bigger volley).
+function spawnDebris(cx, floorY, hp) {
+  const slots = 7;
+  const span = 9 * 64; // arena-ish width centred on the boss
+  const left = cx - span / 2;
+  const safe = Math.floor(k.rand(0, slots)); // a guaranteed-clear lane (±1 slot kept empty too)
+  const want = Math.min(BOSS.DEBRIS_BASE + (BOSS.HP - hp), slots - 3);
+  let placed = 0;
+  for (let s = 0; s < slots && placed < want; s++) {
+    if (Math.abs(s - safe) <= 1) continue; // keep a 3-slot safe lane around `safe`
+    placed++;
+    dropDebris(left + (s + 0.5) * (span / slots), floorY);
+  }
+}
+
+function dropDebris(x, floorY) {
+  // Telegraph: a pulsing marker on the floor where the rock will land (a clear dodge window).
+  const marker = k.add([
+    k.rect(48, 8, { radius: 4 }),
+    k.pos(x, floorY),
+    k.anchor("bot"),
+    k.color(224, 92, 82),
+    k.opacity(0.5),
+    k.z(5),
+    { age: 0 },
+  ]);
+  marker.onUpdate(() => {
+    marker.age += k.dt();
+    marker.opacity = 0.3 + 0.4 * Math.abs(Math.sin(marker.age * 14));
+    if (marker.age >= BOSS.DEBRIS_TELEGRAPH) k.destroy(marker);
+  });
+  k.wait(BOSS.DEBRIS_TELEGRAPH, () => {
+    const rock = k.add([
+      k.rect(40, 40, { radius: 8 }),
+      k.pos(x, floorY - 360), // drops from up near the boss/ceiling
+      k.anchor("center"),
+      k.area({ scale: 0.8 }),
+      k.color(120, 108, 124),
+      k.outline(3, k.rgb(26, 20, 32)),
+      k.z(5),
+      "hazard",
+      "boss-attack", // see spawnShockwave: lets a test count the boss's own attacks
+      { vy: 0 },
+    ]);
+    rock.onUpdate(() => {
+      rock.vy += BOSS.DEBRIS_GRAVITY * k.dt();
+      rock.pos.y += rock.vy * k.dt();
+      if (rock.pos.y >= floorY + 8) k.destroy(rock); // shatter on the floor
+    });
+  });
 }
 
 // --- Roller: a snowball that wakes when the heroine is near and gives chase along the
@@ -842,15 +988,20 @@ function makeFeather(cx, cy) {
     { baseY: cy, t: k.rand(0, Math.PI * 2) },
   ]);
   // Cool aura behind the feather so it reads as "special" (mirrors the star's warm halo).
+  // Visibility (segnalato per il Livello 4 — la neve quasi bianca la ingoiava): the aura is a
+  // touch stronger and a hair warmer so a careful eye catches it, WITHOUT making it obvious —
+  // it stays a hidden bonus (the player has to be looking). The real readability win is the
+  // faint dark outline on the vane below, which lifts the pale silhouette off a white backdrop.
   const halo = item.add([
-    k.circle(20),
-    k.color(...COL),
+    k.circle(22),
+    k.color(210, 230, 252),
     k.anchor("center"),
     k.pos(0, 0),
-    k.opacity(0.18),
+    k.opacity(0.3),
     k.z(2),
   ]);
-  // The feather vane (a leaf silhouette pointing up) + a bright central spine.
+  // The feather vane (a leaf silhouette pointing up) + a bright central spine. A thin dark
+  // outline gives the pale vane an edge on light backgrounds (snow) — still understated.
   const vane = item.add([
     k.polygon([
       k.vec2(0, -18), k.vec2(5, -6), k.vec2(7, 4), k.vec2(4, 14),
@@ -859,15 +1010,16 @@ function makeFeather(cx, cy) {
     k.anchor("center"),
     k.pos(0, 0),
     k.color(...COL),
+    k.outline(2, k.rgb(46, 64, 96)),
     k.rotate(0),
     k.z(3),
   ]);
-  vane.add([k.rect(2, 28), k.anchor("center"), k.pos(0, -1), k.color(255, 255, 255), k.opacity(0.7)]);
+  vane.add([k.rect(2, 28), k.anchor("center"), k.pos(0, -1), k.color(255, 255, 255), k.opacity(0.85)]);
   item.onUpdate(() => {
     item.t += k.dt() * 3;
     item.pos.y = item.baseY + Math.sin(item.t) * 6; // bob
     vane.angle = Math.sin(item.t * 0.7) * 12; // gentle sway (only the art tilts, not the hitbox)
-    halo.opacity = 0.12 + 0.12 * (0.5 + 0.5 * Math.sin(item.t * 2)); // pulse
+    halo.opacity = 0.22 + 0.14 * (0.5 + 0.5 * Math.sin(item.t * 2)); // pulse
   });
   return item;
 }

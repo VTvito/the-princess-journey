@@ -370,7 +370,8 @@ try {
   check("feather grants high-jump", feather.ok, feather.why || `jumpMul=${feather.jumpMul}`);
 
   // --- Fase 2 Armored swooper (Livello 6): a 2-hp diving guard — survives + enrages on the
-  // first stomp, falls on the second. (The Gargoyle is hp 3, so target hp===2 specifically.) ---
+  // first stomp, falls on the second. Target hp===2 specifically (the final boss is a separate
+  // "boss"-tagged entity, not an "enemy", so k.get("enemy") never returns it — see boss.mjs). ---
   await page.evaluate(() => localStorage.setItem("pj.currentLevel", "6"));
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => window.__pj?.k && window.__pj.k.getSceneName() === "menu", null, { timeout: T, polling: 100 });
@@ -437,9 +438,11 @@ try {
 
   // --- Fase Arcade: hearts grant a life, and losing them all triggers Game Over (back to
   // level 1, score wiped, Coccoline tab KEPT). Run last, so the earlier finale-receipt
-  // assertion still sees only the single 500 from the §1 death. ---
+  // assertion still sees only the single 500 from the §1 death. Hearts now live ONLY on
+  // Livelli 3 & 5 (the others were removed to make lives scarcer), so probe the heart on
+  // Livello 3; Game Over still resets the run to Livello 1 regardless of where it happened. ---
   await page.evaluate(() => {
-    localStorage.setItem("pj.currentLevel", "1");
+    localStorage.setItem("pj.currentLevel", "3");
     localStorage.setItem("pj.lives", "3");
     localStorage.setItem("pj.score", "0");
   });

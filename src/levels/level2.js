@@ -78,6 +78,13 @@ export const LEVEL_2 = {
     semisolids: [
       { x: 24, y: 8, w: 5 },
       { x: 86, y: 3, w: 8 }, // the chimney perch, ringed with pearls
+      // Bugfix "cengia irraggiungibile": the crumble ledge with the two pearls sits at row 9,
+      // a full 3 cells above the lane — out of a single jump's reach (apex ≈ 2.3 cells, there's
+      // NO double jump), so it was a dangling, unreachable bonus (segnalato e mai risolto). This
+      // one-way step at row 10 makes it a real two-hop bonus: lane → step(row10) → crumble(row9),
+      // grabbing the row-8 pearls mid-hop. Placed to the RIGHT of the crumble (x62-65) so nothing
+      // sits directly above it (no body overlap when standing) and it's clear of the urchins.
+      { x: 66, y: 10, w: 2 },
     ],
     items: [
       { x: 2, y: LANE, ch: "@" },
@@ -110,11 +117,12 @@ export const LEVEL_2 = {
       { x: 30, y: LANE, ch: "c" },
       { x: 52, y: LANE, ch: "c" },
       { x: 76, y: LANE, ch: "c" },
+      { x: 82, y: LANE, ch: "c" }, // an extra guard on the flat after the twist mover (clear of the x88 shaft)
       { x: 94, y: LANE, ch: "c" }, // a fresh guard on the post-updraft flat (banked at x84)
       { x: 100, y: LANE, ch: "c" },
       // (No mid-level star anymore — the twist's crab + urchin pressure now bites for real.)
-      // Arcade: the level's heart (+1 vita), on the flat reef between the urchins at x50/x60.
-      { x: 56, y: LANE - 1, ch: "H" },
+      // (No heart here anymore — only Livelli 3 e 5 grant a +1 vita now, so a run's lives are
+      // scarcer; the coral's crab + urchin pressure must be read, not bought back with a banked life.)
       ...arcCollectibles([8, 16, 21, 32, 44, 50, 58, 66, 78, 86, 96, 102, 110], [AIR, LANE - 1]),
       // Crumble ledge: a quick risky hop over the twist stretch pays out two pearls.
       { x: 62, y: 9, ch: "!" },

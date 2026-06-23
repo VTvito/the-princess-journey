@@ -84,7 +84,8 @@ export const LEVEL_6 = {
     platforms: [
       { x: 32, y: 7, w: 1 }, // mount, chandelier 1
       { x: 80, y: 7, w: 1 }, // mount, chandelier 2
-      { x: 118, y: 3, w: 1 }, // mount, chandelier 3 (over the staircase top)
+      // (The 3rd chandelier mount is gone: the staircase top is now the BOSS ARENA — the
+      // Custode di Pietra owns that airspace, so no swinging chandelier shares it.)
     ],
     // Step up to the minstrel ledge: a one-way ledge (#) at row10, to the RIGHT of the
     // chandelier's swing (the bob sweeps ~x77-83), so it's reachable from the ground in a
@@ -98,9 +99,7 @@ export const LEVEL_6 = {
       // Pendulum chandeliers: anchors under their mounts; bobs sweep the walking line.
       { x: 32, y: 8, ch: "P" },
       { x: 80, y: 8, ch: "P" },
-      // The last chandelier hangs higher: it grazes the staircase top only at dead
-      // centre — it punishes jumping for the goblets, not the walk to the doors.
-      { x: 118, y: 4, ch: "P" },
+      // (The 3rd chandelier is gone — the staircase top is the boss arena now, see "G" below.)
       // The crumbling minstrel ledge over the gauntlet, with its goblet hoard.
       { x: 85, y: 8, ch: "!" },
       { x: 86, y: 8, ch: "!" },
@@ -129,17 +128,20 @@ export const LEVEL_6 = {
       // step-up jump can deadlock the climb — the L3 lesson. Chandelier 3 guards the climb
       // instead.)
       { x: 72, y: 8, ch: "S" },
-      // The Gargoyle Custode, hovering over the last stretch before the doors (the
-      // staircase top is flat — no required jump under it, so she can sneak past
-      // between dives).
-      { x: 122, y: 4, ch: "G" },
+      // THE FINAL BOSS — "Custode di Pietra". It owns the flat staircase top and GATES the
+      // ballroom doors: the goal stays inert until the boss is felled (see game.js). Unlike the
+      // old sneak-past Gargoyle, this is a real multi-phase fight — it hovers out of reach
+      // raining attacks (a ground SHOCKWAVE to jump, and falling DEBRIS), then DESCENDS into a
+      // vulnerable window to be stomped, enraging with each hit. The tile y is only its column
+      // (makeBoss derives its hover/window heights from the arena floor it scans below). Centred
+      // at x=119 so it has room on both sides over the x112-125 staircase top. See build.js.
+      { x: 119, y: 4, ch: "G" },
       // Star power-up before the gauntlet — blow through chandelier 2 invincible. A welcome
       // out for the hardest timing gate (pendulum 2 + the armored ghost), but its window is
       // short (POWERUP.DURATION 5s) so it's a breather, not a "win button".
       { x: 74, y: LANE, ch: "*" },
-      // Arcade: the level's heart (+1 vita), on the flat by candelabra x40 — a life banked
-      // before the long from-spawn front run into the gauntlet.
-      { x: 42, y: LANE - 1, ch: "H" },
+      // (No heart here anymore — only Livelli 3 e 5 grant a +1 vita now. The castle is the
+      // hardest chapter and ends in the boss fight, so it's faced with whatever lives remain.)
       ...arcCollectibles([6, 15, 26, 38, 44, 54, 68, 76, 86, 94], [AIR, LANE - 1]),
       // Goblets up the staircase.
       { x: 105, y: 9, ch: "o" },

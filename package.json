@@ -7,10 +7,11 @@
   "scripts": {
     "serve": "python tools/serve.py 8137",
     "gen": "node tools/gen/index.mjs",
-    "test": "node tools/test/smoke.mjs && node tools/test/features.mjs && node tools/test/levels.mjs",
+    "test": "node tools/test/smoke.mjs && node tools/test/features.mjs && node tools/test/levels.mjs && node tools/test/boss.mjs",
     "test:smoke": "node tools/test/smoke.mjs",
     "test:features": "node tools/test/features.mjs",
     "test:levels": "node tools/test/levels.mjs",
+    "test:boss": "node tools/test/boss.mjs",
     "test:mobile": "node tools/test/mobile.mjs",
     "deploy": "node tools/deploy.mjs"
   },

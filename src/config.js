@@ -202,6 +202,36 @@ export const POWERUP = {
   FEATHER_JUMP_MUL: 1.4,
 };
 
+// Final boss — "Custode di Pietra" (Livello 6 climax). A bespoke, multi-phase guardian,
+// unlike every other enemy: it HOVERS out of jump reach raining attacks (a ground SHOCKWAVE
+// to jump over, and falling DEBRIS), then DESCENDS into a vulnerable window to be stomped,
+// ENRAGING with each hit. Defeating it unlocks the ballroom doors (the goal is gated until
+// then — see game.js). Designed to be strictly beatable with jump+stomp and impossible to
+// softlock: the boss BODY is harmless to touch (only its shockwave/debris hazards hurt her),
+// the vulnerable window is fixed (never shrinks), and it recurs forever. Heights are offsets
+// above the arena floor (px) so makeBoss positions itself relative to the staircase top it
+// scans below — tuned against the single-jump apex (≈148px). Units: px, px/s, s.
+export const BOSS = {
+  HP: 3,                  // stomps to fell it (one hit per vulnerable window)
+  W: 104,                 // visual/hitbox width (a hulking stone guardian)
+  H: 96,                  // visual/hitbox height
+  AREA_SCALE: 0.92,       // stomp hitbox a touch forgiving
+  ATTACK_ABOVE_FLOOR: 290, // hover height while attacking — out of stomp/contact reach at apex
+  WINDOW_ABOVE_FLOOR: 150, // descent height for the vulnerable window — stompable from the floor
+  HOVER_TIME: 1.3,        // s hovering before an attack (shortened by enrage)
+  TELEGRAPH: 0.55,        // s of flash/dip warning before an attack fires
+  RECOVER: 0.7,           // s the attack plays out before the boss descends
+  WINDOW_TIME: 1.7,       // s the vulnerable window stays open (FIXED — never shrinks)
+  MOVE_TIME: 0.42,        // s to descend into / rise out of the window
+  SHOCKWAVE_SPEED: 280,   // px/s ground wave (< RUN_SPEED 320 so it's always jumpable)
+  SHOCKWAVE_SPEED_CAP: 305, // even fully enraged the wave stays jumpable
+  SHOCKWAVE_LIFE: 2.4,    // s before a wave despawns (keeps it on-screen, never a hidden hazard)
+  DEBRIS_BASE: 2,         // falling rocks per volley at full hp (+1 per hp lost)
+  DEBRIS_TELEGRAPH: 0.7,  // s a target marker shows before a rock drops (dodge window)
+  DEBRIS_GRAVITY: 1500,   // px/s² fall accel (matches stalactites)
+  ENRAGE_K: 0.18,         // cadence/shockwave speedup per hp lost: factor = 1 + (HP-hp)*K
+};
+
 // Asset manifest — the swap point. Replace files in /assets and, if an extension
 // changes, update the path here. Keys are stable so game code never hard-codes paths.
 export const ASSETS = {

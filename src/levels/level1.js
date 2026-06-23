@@ -101,7 +101,9 @@ export const LEVEL_1 = {
       // Forest critters: a couple of ground crabs and a circling crow — the enchanted wood
       // isn't empty anymore. Placed on flat stretches, clear of jump arcs and the canopy drop.
       { x: 7, y: LANE, ch: "c" }, // greets her just past the spawn
+      { x: 36, y: LANE, ch: "c" }, // patrols the develop flat (clear of the x29 spring + x42 thorn)
       { x: 64, y: LANE, ch: "c" }, // patrols before the canopy
+      { x: 88, y: LANE, ch: "c" }, // guards the flat run-up before the terraced climax (clear of the canopy drop)
       { x: 110, y: 9, ch: "c" }, // a final guard on the flat summit, just before the goal
       { x: 32, y: AIR, ch: "f" }, // a crow over the develop stretch
       // Thorns: one per stretch, clear of ravine edges, spring landings and the canopy drop.
@@ -111,8 +113,8 @@ export const LEVEL_1 = {
       { x: 98, y: 10, ch: "^" }, // on the first terrace's surface
       // (No invincibility stars in the tutorial anymore — arcade difficulty: the develop
       // crabs/thorns and the airborne twist must be read and timed, not bulldozed.)
-      // Arcade: the level's heart (+1 vita), on the flat develop run so it's reliably grabbed.
-      { x: 40, y: LANE - 1, ch: "H" },
+      // (No heart here anymore — only Livelli 3 e 5 grant a +1 vita now, so lives are scarcer
+      // across a run; the early levels lean on careful play instead of a banked extra life.)
       // Apples along the run (rows 9–10, grabbed mid-jump).
       ...arcCollectibles([8, 16, 23, 32, 44, 64, 86], [AIR, LANE - 1]),
       // Bonus apples: the spring perch, the high route, and the climb.

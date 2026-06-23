@@ -15,7 +15,10 @@
 //     and the old check missed it;
 //   • re-resume on visibilitychange/focus, since iOS drops the context to suspended/
 //     "interrupted" when the tab or app is backgrounded.
-// Idempotent; the gesture listeners self-remove only once the context is truly "running".
+// Idempotent; the gesture listeners stay armed for the WHOLE session, so a tap AFTER an
+// interruption can re-resume the context (removing them on the first unlock was exactly why
+// the music sometimes never came back when resuming an interrupted game — see the resume note
+// on `sync` below).
 
 import { k } from "./kaplayCtx.js";
 import { resumeCurrentBgm } from "./audio.js";
@@ -23,6 +26,7 @@ import { resumeCurrentBgm } from "./audio.js";
 const GESTURES = ["pointerdown", "touchend", "mousedown", "keydown"];
 let installed = false;
 let statechangeBound = false;
+let wasRunning = false; // tracks the suspended↔running edge so we restart bgm exactly once
 
 /** Play a 0-length silent buffer — some WebKit builds need an actual play() to fully unlock. */
 function pokeSilent(ctx) {
@@ -35,10 +39,6 @@ function pokeSilent(ctx) {
   } catch {
     // best-effort; resume() alone is enough on modern iOS
   }
-}
-
-function removeListeners(handler) {
-  for (const ev of GESTURES) window.removeEventListener(ev, handler, true);
 }
 
 /** Tell iOS this is media playback so WebAudio output isn't tied to the ambient route. */
@@ -61,43 +61,45 @@ export function installAudioUnlock() {
 
   setPlaybackCategory();
 
-  // The context just reached "running": (re)start whatever track a locked-context call
-  // scheduled-but-never-sounded, and stop listening for gestures. Stays correct if a later
-  // interruption re-runs it (resumeCurrentBgm restarts cleanly; removeListeners is idempotent).
-  const onRunning = () => {
-    resumeCurrentBgm();
-    removeListeners(onGesture);
+  // (Re)start whatever track a locked-context call queued — but ONLY on the rising edge into
+  // "running", so we never restart the music on every tap while it's already playing. This
+  // fires on the FIRST unlock AND again after every iOS interruption: backgrounding drops the
+  // context to suspended/"interrupted", and on return the next gesture brings it back to running,
+  // re-triggering the edge here so the bgm that fell silent starts again (the resume-bug fix).
+  const sync = (ctx) => {
+    const running = ctx.state === "running";
+    if (running && !wasRunning) resumeCurrentBgm();
+    wasRunning = running;
   };
 
   const tryResume = () => {
     const ctx = k.audioCtx;
     if (!ctx) return; // engine/audio not ready yet — a later gesture/event retries
-    if (ctx.state === "running") {
-      onRunning();
-      return;
-    }
-    // Bind the REAL state transition once: fires whenever resume() actually completes,
-    // however many ticks later WebKit takes — this is what the old setTimeout(0) missed.
+    // Bind the REAL state transition ONCE (persists for the whole session): it catches the
+    // resume→running transition however many ticks later WebKit takes, including re-resumes
+    // after an interruption — what the old one-shot teardown + setTimeout(0) missed.
     if (!statechangeBound) {
       statechangeBound = true;
-      ctx.addEventListener("statechange", () => {
-        if (ctx.state === "running") onRunning();
-      });
+      ctx.addEventListener("statechange", () => sync(ctx));
     }
-    // "suspended"/"interrupted" → ask to resume inside the gesture and poke a silent buffer.
-    ctx.resume().catch(() => {});
-    pokeSilent(ctx);
+    sync(ctx); // catch the already-running case (no statechange fires then)
+    if (ctx.state !== "running") {
+      // "suspended"/"interrupted" → ask to resume inside the gesture and poke a silent buffer.
+      ctx.resume().catch(() => {});
+      pokeSilent(ctx);
+    }
   };
 
   const onGesture = () => tryResume();
 
-  for (const ev of GESTURES) {
-    // capture: true → fires during the real DOM dispatch, ahead of Kaplay's own handlers.
-    window.addEventListener(ev, onGesture, true);
-  }
+  // Gesture listeners stay armed for the WHOLE session (capture phase, ahead of Kaplay). We do
+  // NOT tear them down once running: iOS re-suspends the context on backgrounding, and only a
+  // real gesture can resume it again — removing them was why the music sometimes never came back
+  // on resuming an interrupted game. Once running they're cheap (a state check + an early out).
+  for (const ev of GESTURES) window.addEventListener(ev, onGesture, true);
 
   // iOS suspends/interrupts the context on backgrounding; resume() is allowed again right
-  // after the page becomes visible/focused, so re-arm there too (not only on taps).
+  // after the page becomes visible/focused, so re-try there too (the next real tap seals it).
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") tryResume();
   });

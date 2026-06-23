@@ -266,6 +266,38 @@ export function registerGameScene() {
         die();
       }
     });
+    // --- Final boss (Livello 6 "Custode di Pietra"): a DEDICATED handler, separate from the
+    // "enemy" one, so the boss BODY is HARMLESS to touch — only its shockwaves / falling debris
+    // (tagged "hazard", handled above) can hurt her. This is the encounter's softlock-proofing:
+    // she can never die just by being near the boss, only by failing to dodge a telegraphed
+    // attack. She damages it ONLY by stomping from above during its vulnerable window
+    // (boss.invulnerable === false); each hit enrages it. Felling it destroys the lone "boss"
+    // object, which unlocks the gated goal (see the goal handler). Guaranteed beatable: the
+    // boss's vulnerable window recurs forever regardless of where she stands.
+    player.onCollide("boss", (boss) => {
+      if (finished || dead) return;
+      const stomping = player.vel.y > 60 && player.pos.y < boss.pos.y;
+      if (!stomping) return; // body contact is safe — the danger is the attacks, not the stone
+      player.vel.y = -PHYSICS.STOMP_BOUNCE; // always bounce off it
+      if (boss.invulnerable) return; // hovering/attacking out of reach → no damage this hit
+      boss.hp -= 1;
+      if (boss.hp <= 0) {
+        // Felled: confetti, a big impact, triple points — then it's gone and the doors open.
+        confettiBurst(boss.pos, [theme.collectible, PALETTE.cream, PALETTE.gold]);
+        sfx("stomp");
+        screenShake(6);
+        dustPuff(boss.pos);
+        bumpScore(SCORE.STOMP * 3);
+        k.destroy(boss);
+      } else {
+        boss.onStomped?.(); // flash + retreat; it rises to attack again, faster
+        sfx("stomp");
+        hitStop();
+        screenShake(4);
+        dustPuff(boss.pos);
+        bumpScore(SCORE.STOMP);
+      }
+    });
     // Checkpoint flag (Phase 4): touching it sets the respawn point for this level —
     // deaths still cost 500 Coccoline (the meta is sacred), but the retry starts here.
     player.onCollide("checkpoint", (flag) => {
@@ -506,9 +538,37 @@ export function registerGameScene() {
       updateLives();
     });
 
+    // A throttled floating hint when she reaches a still-gated goal (Livello 6 boss).
+    let bossHintAt = 0;
+    function showBossHint() {
+      if (k.time() < bossHintAt) return;
+      bossHintAt = k.time() + 2.2;
+      const hint = k.add([
+        k.text("Sconfiggi il Custode per passare!", { size: 24 }),
+        k.pos(player.pos.x, player.pos.y - 96),
+        k.anchor("center"),
+        k.color(...PALETTE.gold),
+        k.z(55),
+        { age: 0 },
+      ]);
+      hint.onUpdate(() => {
+        hint.age += k.dt();
+        hint.pos.y -= 16 * k.dt();
+        if (hint.age > 1.4) hint.opacity = Math.max(0, 1 - (hint.age - 1.4) / 0.6);
+        if (hint.age > 2) k.destroy(hint);
+      });
+    }
+
     // --- Goal: unlock a skin, advance progress, continue to the next level ---
     player.onCollide("goal", () => {
       if (finished || dead) return;
+      // Boss gate (Livello 6): the ballroom doors stay sealed until the Custode di Pietra is
+      // felled. As soon as the lone "boss" object is destroyed this check passes — no physical
+      // wall to get stuck behind, and the boss is guaranteed beatable, so this can't softlock.
+      if (k.get("boss").length > 0) {
+        showBossHint();
+        return;
+      }
       finished = true;
       checkpointAt = null; // the journey continues — next level starts clean
       clearCheckpoint(); // …and the persisted one is spent (lives carry over to the next level)

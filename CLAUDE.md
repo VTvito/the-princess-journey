@@ -79,12 +79,26 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
   crab+thorn+gap cluster at once and is hard to reason about. Add enemies/hazards on flat
   stretches **clear of jump arcs and patrol ranges**, add 2-cell gaps (never >2 on the critical
   path — a single jump can't clear wider; there is no double jump), thin out checkpoints.
+- **Final boss "Custode di Pietra" (`makeBoss`, `build.js`; tile `G`, `level6.js` climax):** a
+  bespoke multi-phase guardian, deliberately **softlock-proof** — keep it that way. It is tagged
+  **`"boss"`, NOT `"enemy"`**, so its body is **harmless to touch**: only the transient `"hazard"`
+  it spawns (a ground **shockwave** to jump + telegraphed falling **debris**, both also tagged
+  `"boss-attack"`) can hurt her. A dedicated `player.onCollide("boss")` in `game.js` damages it
+  **only on a stomp during its vulnerable window** (`boss.invulnerable === false`); each hit
+  enrages it (`hp`-derived, but the window length is **fixed** so it stays beatable). Its phase
+  loop is **deterministic** (not player-position-driven) so the window always recurs. It **gates
+  the goal**: `onCollide("goal")` early-returns while `k.get("boss").length > 0` — no physical
+  wall (nothing to wedge behind), and the boss is guaranteed killable, so the gate can't deadlock.
+  `makeBoss` derives its hover/window heights from the arena **floor it scans below** (`case "G"`),
+  tuned to the single-jump apex (~148px). Tunables live in `config.BOSS`; coverage in
+  `tools/test/boss.mjs`. (The old optional sneak-past Gargoyle is gone — this replaces it.)
 - **Service worker is prod-only:** `sw.js` is registered in `src/main.js` **only off localhost**,
   so it never caches stale files between Playwright runs / dev edits. On a real content change,
   bump `CACHE` in `sw.js` so clients fetch fresh. It now also **bypasses `/api/*`** (never caches
   the live leaderboard).
-- **Arcade lives = a "partita":** start `LIVES.START` (3) lives, +1 per `H` heart (one per level,
-  capped `LIVES.MAX`). A death spends a life **and** banks 500 Coccoline, respawning from the
+- **Arcade lives = a "partita":** start `LIVES.START` (3) lives, +1 per `H` heart (only on
+  **Livelli 3 & 5** now — the other levels' hearts were removed so lives stay scarce across a
+  run; don't re-add them without a reason), capped `LIVES.MAX`. A death spends a life **and** banks 500 Coccoline, respawning from the
   checkpoint; at 0 lives `die()` calls `resetRun()` (level→1, score→0, lives refilled, checkpoint
   cleared) and shows the **Game Over** overlay (`src/ui/gameOver.js`). `resetRun()` deliberately
   **keeps** `coccolineRun` + `totaleCoccoline` so the finale tallies every Coccolina across
