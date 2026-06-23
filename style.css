@@ -35,6 +35,26 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* The <main> landmark wraps the canvas purely for accessibility; `display: contents` removes
+   its own box so the canvas lays out exactly as before (as a child of <body>). */
+main#app {
+  display: contents;
+}
+
+/* Off-screen but exposed to assistive tech — for the document <h1> inside <main>. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
 #game {
   display: block;
   width: 100%;

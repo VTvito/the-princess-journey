@@ -13,7 +13,9 @@ import { GAME_W, GAME_H, PALETTE } from "./config.js";
 // (choppy) on iOS. Since the art is nearest-neighbour pixel art scaled to full-screen anyway,
 // dropping to density 1 on mobile is barely perceptible visually but vastly smoother. Desktop
 // keeps min(dpr, 2) for crisp HUD text where the GPU budget is there.
-const coarsePointer =
+// Exported so gameplay can lighten per-frame work on touch devices (e.g. fewer ambient
+// particles — see src/scenes/game.js), where the GPU/CPU budget is tighter than desktop.
+export const coarsePointer =
   typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)")?.matches;
 
 export const k = kaplay({

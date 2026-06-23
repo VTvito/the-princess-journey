@@ -95,6 +95,19 @@ export function hitStop(duration = 0.08, scale = 0.15) {
   });
 }
 
+/**
+ * Force-clear any in-flight hit-stop. hitStop() drops k.debug.timeScale to 0.15 and relies on a
+ * SCENE-SCOPED k.wait to restore it. If a scene change (k.go) happens inside that ~80ms window —
+ * e.g. a stomp immediately followed by a death/respawn or reaching the goal — the restore timer
+ * is cancelled with the old scene tree and timeScale stays at 0.15: the whole game then runs at
+ * 15% speed and reads as FROZEN / stuck, with `stopping` latched true (so future hit-stops no-op
+ * too). Scenes call this on entry so a stale hit-stop can never leak across a transition.
+ */
+export function resetHitStop() {
+  stopping = false;
+  k.debug.timeScale = 1;
+}
+
 /** Small screen shake (wraps k.shake so callers don't reach into the engine). */
 export function screenShake(intensity = 3) {
   k.shake(intensity);

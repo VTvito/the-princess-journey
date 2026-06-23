@@ -84,12 +84,15 @@ export const LEVEL_2 = {
       { x: 116, y: LANE, ch: ">" },
       // The updraft: a column of rising water filling the climax shaft…
       ...[88, 89, 90].flatMap((x) => [8, 9, 10, 11, 12].map((y) => ({ x, y, ch: "w" }))),
-      // …continuing up as the secret chimney to the perch above. Kept the full 3-cell
-      // width (was a single column at x89): threading a 1-cell-wide rising current to the
-      // perch was pixel-perfect and impossible on touch — now the current lifts her up
-      // reliably without aiming. Perch position (row 3) unchanged; the base crossing at
-      // rows 8-12 is untouched, so the critical climax over the x88 gap is unaffected.
-      ...[88, 89, 90].flatMap((x) => [4, 5, 6, 7].map((y) => ({ x, y, ch: "w" }))),
+      // …continuing up as the secret chimney, now THROUGH and ABOVE the perch (rows 2-7).
+      // Bugfix "colonna d'acqua": the current used to stop at row 4 — one row below the perch
+      // (row 3) — so the gentle lift left her oscillating just *under* the ledge, unable to land
+      // on it (segnalato e mai risolto). Carrying the column up to row 2 lifts her clearly above
+      // the perch; the "w" cells overwrite the perch's middle (x88-90) so the water erupts through
+      // a gap and she steps onto the perch's OUTER cells (x86-87 / x91-93, where the pearl ring is).
+      // The lift FORCE (config UPDRAFT_LIFT) is unchanged, so the base crossing at rows 8-12 — on
+      // the critical path — behaves exactly as before; only the optional bonus reach is fixed.
+      ...[88, 89, 90].flatMap((x) => [2, 3, 4, 5, 6, 7].map((y) => ({ x, y, ch: "w" }))),
       { x: 26, y: LANE, ch: "M" }, // spring up to the bonus reef
       // Arcade: a SINGLE checkpoint after the first ride (x46), banking the intro so the
       // riskiest stretch — the off-phase twist jellyfish at x72 — is retried from close by.

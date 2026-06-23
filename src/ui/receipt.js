@@ -28,8 +28,14 @@ function els() {
   closeBtn ||= document.getElementById("receipt-close");
 }
 
-/** Reveal the receipt with this run's bill + the lifetime total, and wire its buttons. */
-export function showReceipt(run, lifetime) {
+/**
+ * Reveal the receipt with this run's bill + the lifetime total, and wire its buttons.
+ * @param {number} run       this adventure's Coccoline bill
+ * @param {number} lifetime  the lifetime grand total
+ * @param {() => void} [onClose]  runs after the player taps "Chiudi" (the finale uses it to chain
+ *   the leaderboard popup). NOT fired by the defensive hideReceipt() calls from other scenes.
+ */
+export function showReceipt(run, lifetime, onClose) {
   els();
   if (!overlay) return;
   if (amountEl) amountEl.textContent = String(run);
@@ -40,7 +46,12 @@ export function showReceipt(run, lifetime) {
       window.open(whatsappUrl(run, lifetime), "_blank", "noopener,noreferrer");
     };
   }
-  if (closeBtn) closeBtn.onclick = hideReceipt;
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      hideReceipt();
+      onClose?.();
+    };
+  }
 }
 
 /** Hide the receipt (reveals the finale + its menu button beneath). */

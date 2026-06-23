@@ -436,3 +436,59 @@ function paintRoller(phase = 0) {
 }
 
 export const buildRollerStrip = () => strip([0, 1, 2, 3, 4, 5].map(paintRoller), 14, 14);
+
+// --- heart pickup (Fase Arcade, 12×12 native → 48px) ---------------------------------------
+// A bold pixel-art heart for the +1-vita drop, replacing the old primitive (two circles + a
+// rotated square) that read as smooth vector art against the nearest-neighbour world. Single
+// frame — the runtime bobs it (src/levels/build.js makeHeart). Warm rose-red matches the
+// lives HUD, with a shaded lower-right and a bright sheen so it reads as a precious pickup.
+export function paintHeart() {
+  const img = newImg(12, 12);
+  const red = [232, 76, 110];
+  const lo = darken(red, 0.78);
+  // Two rounded lobes up top…
+  fillDisc(img, 3.7, 4, 2.7, red);
+  fillDisc(img, 7.3, 4, 2.7, red);
+  // …joined by a downward taper to the point — together they read as a heart.
+  fillTrap(img, 4, 10, 5.5, 3.8, 0.5, red);
+  // Shaded lower-right for volume, then re-lay the lit upper-left lobe on top.
+  fillDisc(img, 7.6, 5, 2.5, lo);
+  fillTrap(img, 6, 10, 6.1, 2.4, 0.45, lo);
+  fillDisc(img, 3.7, 4, 2.3, red);
+  // Bright sheen on the left lobe.
+  pset(img, 2, 3, [255, 216, 226]);
+  pset(img, 3, 3, [255, 216, 226]);
+  pset(img, 2, 4, [255, 202, 214]);
+  outline(img, OUT);
+  return img;
+}
+
+// --- hopper enemy "Rospo Saltatore" (Fase Arcade, 13×12 native → 52×48) ---------------------
+// A squat green toad, replacing the old primitive (stacked circles). Single frame — the runtime
+// squash-and-stretches it through the hop arc (src/levels/build.js makeHopper), so no strip is
+// needed. Pale belly, bulging eyes on top and a wide mouth read as a friendly toad at a glance.
+export function paintHopper() {
+  const img = newImg(13, 12);
+  const green = [96, 168, 88];
+  const lo = darken(green, 0.72);
+  const belly = [188, 224, 152];
+  // Squat body.
+  fillDisc(img, 6.5, 6.8, 4.4, green);
+  fillRect(img, 2, 7, 11, 10, green);
+  // Shaded underside, then re-lay the lit top so the shadow reads as volume.
+  fillDisc(img, 6.5, 8.1, 4.1, lo);
+  fillDisc(img, 6.5, 6.2, 4.3, green);
+  fillRect(img, 2, 6.5, 11, 8, green);
+  // Pale belly + a wide mouth line.
+  fillDisc(img, 6.5, 8, 2.6, belly);
+  fillRect(img, 4, 8, 9, 9, lo);
+  // Two eyes bulging from the top (sclera + dark pupil).
+  for (const ex of [4.4, 8.6]) {
+    fillDisc(img, ex, 3, 1.9, green);
+    fillDisc(img, ex, 3, 1.2, [255, 255, 255]);
+    pset(img, Math.round(ex), 3, [24, 36, 24]);
+    pset(img, Math.round(ex), 2, [24, 36, 24]);
+  }
+  outline(img, OUT);
+  return img;
+}

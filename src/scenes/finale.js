@@ -16,6 +16,7 @@ import { openLeaderboard, hideLeaderboard } from "../ui/leaderboard.js";
 import { hidePause } from "../ui/pauseMenu.js";
 import { hideSettings } from "../ui/settings.js";
 import { fadeToScene } from "../ui/transition.js";
+import { resetHitStop } from "../juice.js";
 import { sfx } from "../sfx.js";
 import { playBgm } from "../audio.js";
 
@@ -34,6 +35,7 @@ export function registerFinaleScene() {
     hideLeaderboard();
     hidePause();
     hideSettings();
+    resetHitStop(); // arrive at full speed even if a stomp's hit-stop was cut short by the goal
     // Cinematic scene — no controls; keep the gameplay touch buttons hidden.
     document.body.classList.remove("playing");
 
@@ -172,9 +174,14 @@ export function registerFinaleScene() {
 
     // The payoff: the receipt is a full-screen overlay that covers the heartfelt
     // message, so hold it back long enough to actually READ the journey note first (it used
-    // to pop after 1.4s and bury the message). Its "Chiudi" button returns to the message.
+    // to pop after 1.4s and bury the message). Closing it ("Chiudi") then auto-opens the
+    // leaderboard (submit mode) so entering the score is an invited step, not a button to hunt
+    // for — like the Coccoline receipt popout. The top-left "★ Classifica" button stays as a
+    // re-open fallback (and the leaderboard degrades gracefully offline — see leaderboard.js).
     const RECEIPT_DELAY = 10; // s — an unhurried read of the six-chapter message before the receipt
-    k.wait(RECEIPT_DELAY, () => showReceipt(getCoccolineRun(), getCoccoline()));
+    k.wait(RECEIPT_DELAY, () =>
+      showReceipt(getCoccolineRun(), getCoccoline(), () => openLeaderboard({ score: getScore() })),
+    );
   });
 }
 

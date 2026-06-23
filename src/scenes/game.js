@@ -4,7 +4,7 @@
 // on reaching the goal runs the reward flow: unlock a skin, advance progress, continue to
 // the next level with the new skin layered on.
 
-import { k } from "../kaplayCtx.js";
+import { k, coarsePointer } from "../kaplayCtx.js";
 import {
   GAME_W,
   GAME_H,
@@ -28,6 +28,7 @@ import {
   getScore,
   getLives,
   addLife,
+  addHeartTaken,
   loseLife,
   getCheckpoint,
   setCheckpoint,
@@ -45,7 +46,7 @@ import { showPause, hidePause } from "../ui/pauseMenu.js";
 import { showSettings, hideSettings } from "../ui/settings.js";
 import { hideReceipt } from "../ui/receipt.js";
 import { fadeToScene } from "../ui/transition.js";
-import { confettiBurst, dustPuff, hitStop, screenShake } from "../juice.js";
+import { confettiBurst, dustPuff, hitStop, screenShake, resetHitStop } from "../juice.js";
 import { sfx } from "../sfx.js";
 import { playBgm } from "../audio.js";
 
@@ -86,6 +87,7 @@ export function registerGameScene() {
     hidePause();
     hideSettings();
     k.getTreeRoot().paused = false;
+    resetHitStop(); // a hit-stop interrupted by the restart must never leak a 0.15× timeScale here
     // Reveal the on-screen touch controls (CSS shows them only while body.playing).
     document.body.classList.add("playing");
 
@@ -481,6 +483,7 @@ export function registerGameScene() {
       sfx("collect");
       k.destroy(h);
       addLife();
+      addHeartTaken(level); // remember it so a checkpoint retry won't respawn it (no life loop)
       updateLives();
     });
 
@@ -633,7 +636,8 @@ function drawParallax(decor) {
 // Drifting bubbles for the underwater level (extracted from the old drawCoral; the coral
 // fronds now live in the coral_mid/near parallax images).
 function drawBubbles() {
-  for (let i = 0; i < 14; i++) {
+  const N = coarsePointer ? 9 : 14; // lighter ambient load on mobile (near-identical look)
+  for (let i = 0; i < N; i++) {
     const bx = k.rand(0, GAME_W);
     const speed = k.rand(12, 30);
     const bub = k.add([
@@ -657,7 +661,8 @@ function drawBubbles() {
 // signature ambient motion.
 function drawMotes(theme) {
   const tint = theme.mote || [255, 198, 120];
-  for (let i = 0; i < 18; i++) {
+  const N = coarsePointer ? 10 : 18; // lighter ambient load on mobile (near-identical look)
+  for (let i = 0; i < N; i++) {
     const rise = k.rand(10, 26);
     const swayAmp = k.rand(6, 16);
     const swaySpd = k.rand(0.6, 1.4);
@@ -688,7 +693,8 @@ function drawMotes(theme) {
 // Falling snow for the alpine level (extracted from the old drawSnow; the peaks now live in
 // the snow_mid/near parallax images).
 function drawSnowflakes() {
-  for (let i = 0; i < 40; i++) {
+  const N = coarsePointer ? 24 : 40; // lighter ambient load on mobile (near-identical look)
+  for (let i = 0; i < N; i++) {
     const speed = k.rand(22, 56);
     const drift = k.rand(-14, 14);
     const fl = k.add([

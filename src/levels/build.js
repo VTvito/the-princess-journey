@@ -21,6 +21,7 @@
 import { k } from "../kaplayCtx.js";
 import { PALETTE, ENEMIES, HAZARDS, MECHANICS, PHYSICS, GAME_W } from "../config.js";
 import { sfx } from "../sfx.js";
+import { getHeartsTaken } from "../state.js";
 
 // Cached heroine reference shared by the enemy-AI updates below. `k.get("player")` scans the
 // whole object tree (hundreds of tiles per level, no culling), and the diving/chasing enemies
@@ -49,6 +50,9 @@ export function buildLevel(def) {
   const TILE = def.tileSize;
   const rows = def.map;
   const theme = def.theme;
+  // Whether THIS level's heart was already grabbed this run — if so, don't respawn it on a
+  // checkpoint retry (it would let the player re-bank +1 vita on every death). See state.js.
+  const heartTaken = getHeartsTaken().includes(def.id);
   const cols = rows.reduce((m, r) => Math.max(m, r.length), 0);
   const worldW = cols * TILE;
   const worldH = rows.length * TILE;
@@ -144,7 +148,7 @@ export function buildLevel(def) {
           makeFeather(x + TILE / 2, y + TILE / 2);
           break;
         case "H":
-          makeHeart(x + TILE / 2, y + TILE / 2);
+          if (!heartTaken) makeHeart(x + TILE / 2, y + TILE / 2); // skip if already grabbed this run
           break;
         case "c":
           makeCrab(x + TILE / 2, y + TILE / 2, theme);
@@ -841,11 +845,9 @@ function makeHeart(cx, cy) {
   const halo = item.add([
     k.circle(20), k.color(...COL), k.anchor("center"), k.pos(0, 0), k.opacity(0.18), k.z(2),
   ]);
-  // Classic two-lobe heart: two circles for the humps + a square rotated 45° for the point.
-  const heart = item.add([k.pos(0, 0), k.z(3)]);
-  heart.add([k.circle(6), k.color(...COL), k.anchor("center"), k.pos(-4, -3)]);
-  heart.add([k.circle(6), k.color(...COL), k.anchor("center"), k.pos(4, -3)]);
-  heart.add([k.rect(11, 11), k.color(...COL), k.anchor("center"), k.pos(0, 1), k.rotate(45)]);
+  // Pixel-art heart sprite (tools/gen/world.mjs paintHeart) — replaces the old primitive
+  // lobes+square so it reads as pixel art like the rest of the world. Aura + bob are kept.
+  item.add([k.sprite("heart"), k.anchor("center"), k.pos(0, 0), k.z(3)]);
   item.onUpdate(() => {
     item.t += k.dt() * 3;
     item.pos.y = item.baseY + Math.sin(item.t) * 6; // bob
@@ -916,7 +918,6 @@ function makeFlyer(cx, cy, theme) {
 // FLAT ground so the baseline reads true. Drawn from primitives (no art asset). Units from
 // ENEMIES.HOPPER_* (config.js).
 function makeHopper(cx, cy, theme) {
-  const GREEN = [96, 168, 88];
   const hopper = k.add([
     k.rect(34, 28, { radius: 11 }),
     k.opacity(0),
@@ -928,16 +929,9 @@ function makeHopper(cx, cy, theme) {
     // rest counts down on the ground; a random start so a row of hoppers doesn't pulse in sync.
     { baseX: cx, baseY: cy, dir: 1, vy: 0, airborne: false, rest: k.rand(0, ENEMIES.HOPPER_INTERVAL) },
   ]);
-  // Toad art (squash-and-stretch container so the hop has weight).
-  const art = hopper.add([k.pos(0, 0), k.scale(1), k.anchor("center"), k.z(4)]);
-  art.add([k.circle(15), k.color(...GREEN), k.anchor("center"), k.pos(0, 0)]); // body
-  art.add([k.circle(9), k.color(186, 222, 150), k.anchor("center"), k.pos(0, 5), k.opacity(0.85)]); // belly
-  const eyeL = art.add([k.circle(5), k.color(...GREEN), k.anchor("center"), k.pos(-7, -12)]);
-  const eyeR = art.add([k.circle(5), k.color(...GREEN), k.anchor("center"), k.pos(7, -12)]);
-  eyeL.add([k.circle(3), k.color(255, 255, 255), k.anchor("center"), k.pos(0, 0)]);
-  eyeL.add([k.circle(1.6), k.color(24, 36, 24), k.anchor("center"), k.pos(1, 0)]);
-  eyeR.add([k.circle(3), k.color(255, 255, 255), k.anchor("center"), k.pos(0, 0)]);
-  eyeR.add([k.circle(1.6), k.color(24, 36, 24), k.anchor("center"), k.pos(-1, 0)]);
+  // Toad art as a single pixel-art sprite (tools/gen/world.mjs paintHopper); the container
+  // scale set in onUpdate below gives the hop its squash-and-stretch weight.
+  const art = hopper.add([k.sprite("hopper"), k.pos(0, 0), k.scale(1), k.anchor("center"), k.z(4)]);
 
   hopper.onUpdate(() => {
     const dt = k.dt();

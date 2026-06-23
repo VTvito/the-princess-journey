@@ -243,6 +243,10 @@ export const ASSETS = {
     flag: "assets/sprites/flag.png",
     swooper: "assets/sprites/swooper.png",
     roller: "assets/sprites/roller.png",
+    // Arcade pickups/enemies — single-frame pixel art (runtime adds the bob/squash). Drawn in
+    // natural colour like the crab/flyer (no theme tint).
+    heart: "assets/sprites/heart.png",
+    hopper: "assets/sprites/hopper.png",
     // Decor props — collider-free scenery, three per theme. Placed procedurally on
     // exposed ground tops + via authored def.decor lists (src/levels/build.js); each
     // level's theme.props names its menu.

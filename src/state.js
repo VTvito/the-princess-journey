@@ -10,6 +10,7 @@ const KEYS = {
   score: "pj.score",
   lives: "pj.lives",
   checkpoint: "pj.checkpoint", // JSON {level, x, y} — the last flag touched this run
+  heartsTaken: "pj.heartsTaken", // JSON [level…] — hearts already grabbed THIS run (no respawn)
   nickname: "pj.nickname",     // remembered name for the global leaderboard
 };
 
@@ -139,6 +140,42 @@ export function clearCheckpoint() {
   }
 }
 
+// --- Hearts collected this run (persisted) ----------------------------------
+// Which levels' heart (+1 vita) has already been grabbed in the CURRENT run. A death goes
+// through k.go("game") which rebuilds the level (buildLevel), so an `H` tile would otherwise
+// respawn the heart every retry — and if it sits past a checkpoint the player re-grabs it on
+// every death (+1) for every death (-1), so lives never fall (an infinite-life loop). We
+// remember the taken hearts here and skip spawning them; cleared on Game Over / Nuova partita
+// (resetRun) and on "Cancella progressi" (resetProgress), so a fresh run hands its hearts out
+// again. Mirrors the persisted checkpoint so an interruption mid-level resumes consistently.
+export function getHeartsTaken() {
+  const raw = read(KEYS.heartsTaken);
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((n) => Number.isFinite(n)) : [];
+  } catch {
+    return []; // corrupt value — treat as none taken
+  }
+}
+
+export function addHeartTaken(level) {
+  const taken = getHeartsTaken();
+  if (!taken.includes(level)) {
+    taken.push(level);
+    write(KEYS.heartsTaken, JSON.stringify(taken));
+  }
+  return taken;
+}
+
+export function clearHeartsTaken() {
+  try {
+    window.localStorage.removeItem(KEYS.heartsTaken);
+  } catch {
+    // no-op
+  }
+}
+
 // --- Leaderboard nickname ---------------------------------------------------
 export function getNickname() {
   return read(KEYS.nickname) || "";
@@ -158,6 +195,7 @@ export function resetRun() {
   resetScore();
   setLives(LIVES.START);
   clearCheckpoint();
+  clearHeartsTaken(); // a fresh run hands out every level's heart again
 }
 
 // Wipe saved progress (handy for a future "reset" button / testing).
@@ -172,6 +210,7 @@ export function resetProgress() {
     window.localStorage.removeItem(KEYS.score);
     window.localStorage.removeItem(KEYS.lives);
     window.localStorage.removeItem(KEYS.checkpoint);
+    window.localStorage.removeItem(KEYS.heartsTaken);
   } catch {
     // no-op
   }

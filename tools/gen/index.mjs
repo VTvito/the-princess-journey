@@ -18,6 +18,7 @@ import {
   paintApple, paintPearl, paintLantern, paintCrystal, paintRose, paintGoblet,
   buildCrabStrip, buildFlyerStrip, buildPortalStrip,
   buildSpringStrip, buildFlagStrip, buildSwooperStrip, buildRollerStrip,
+  paintHeart, paintHopper,
 } from "./world.mjs";
 import { DECOR } from "./decor.mjs";
 import { BG_THEMES, buildSky, buildMid, buildNear } from "./backgrounds.mjs";
@@ -61,6 +62,9 @@ writeSprite("spring.png", buildSpringStrip());
 writeSprite("flag.png", buildFlagStrip());
 writeSprite("swooper.png", buildSwooperStrip());
 writeSprite("roller.png", buildRollerStrip());
+// Single-frame arcade sprites (the runtime bobs the heart / squashes the toad — no strip).
+writeSprite("heart.png", paintHeart());
+writeSprite("hopper.png", paintHopper());
 
 // Decor props — collider-free scenery, three per theme (placed by src/levels/build.js).
 for (const [file, paint] of DECOR) writeSprite(file, paint());

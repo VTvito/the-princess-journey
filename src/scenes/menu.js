@@ -22,6 +22,7 @@ import { showSettings, hideSettings } from "../ui/settings.js";
 import { hideReceipt } from "../ui/receipt.js";
 import { sfx } from "../sfx.js";
 import { playBgm } from "../audio.js";
+import { resetHitStop } from "../juice.js";
 
 // A reusable rounded button. Returns the root game object.
 function makeButton(parent, { x, y, w, h, label, onClick, base = PALETTE.gold, text = PALETTE.deepBlue }) {
@@ -63,6 +64,7 @@ export function registerMenuScene() {
     hideLeaderboard();
     hidePause();
     hideSettings();
+    resetHitStop(); // never inherit a frozen 0.15× timeScale from a hit-stop cut short by leaving game
     // Hide the gameplay touch controls so they never cover the menu's character cards.
     document.body.classList.remove("playing");
 

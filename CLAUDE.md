@@ -73,14 +73,22 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
   **keeps** `coccolineRun` + `totaleCoccoline` so the finale tallies every Coccolina across
   attempts — don't "fix" that; only "Nuova partita" wipes the bill (`resetCoccolineRun`). The
   checkpoint is **persisted** (`pj.checkpoint`) so an interruption resumes mid-level; the pause
-  "Ricomincia il livello" sets `forceSpawn` to ignore it for that one entry.
+  "Ricomincia il livello" sets `forceSpawn` to ignore it for that one entry. A grabbed `H` heart
+  is **remembered per run** (`pj.heartsTaken`, `state.js`) and `buildLevel` skips respawning it —
+  otherwise a heart sitting past a checkpoint is re-grabbed on every death (+1) for every death
+  (-1), an infinite-life loop. Cleared by `resetRun`/`resetProgress` so a fresh run hands it out.
 - **Leaderboard degrades offline:** the global classifica goes through `api/leaderboard.js`
   (Vercel serverless → Upstash Redis). `src/leaderboard.js` swallows every error to `null`, so the
   finale/menu still work with **no `/api`** — exactly the Playwright setup (`tools/serve.py` serves
   statics only). Keep that graceful fallback or the test suite breaks.
-- **New enemies/pickups can be primitive-drawn:** the hopper (`h`) and heart (`H`) are drawn from
-  Kaplay primitives in `build.js` (like the star/feather), so they need **no `npm run gen`** and
-  no `ASSETS.sprites` entry. Reach for the asset pipeline only when you actually want pixel art.
+- **Primitive vs pixel-art world objects:** the **star** (`*`) and **feather** (`+`) are still
+  drawn from Kaplay primitives in `build.js` (a polygon + halo) — no `npm run gen`, no
+  `ASSETS.sprites` entry. The **heart** (`H`) and **hopper/Rospo** (`h`) USED to be primitives too
+  but now use real pixel-art sprites (`tools/gen/world.mjs` `paintHeart`/`paintHopper`, single
+  frame; `ASSETS.sprites.heart`/`.hopper`) so they match the rest of the world — `build.js` draws
+  them with `k.sprite(...)` while keeping the same collider/tags and the runtime bob/squash. So:
+  reach for primitives for quick generic shapes, the asset pipeline (`npm run gen`) when you want
+  pixel art that sits beside the tiles/enemies.
 
 ## Secrets / deploy
 - `VERCEL_TOKEN` lives in a **gitignored + vercelignored `.env`**; `tools/deploy.mjs` reads it.
