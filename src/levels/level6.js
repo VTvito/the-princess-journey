@@ -6,9 +6,9 @@
 //
 // Arc: intro (the entrance hall, a bat overhead) → develop (the first chandelier, then
 // the cellar-pit crossing) → twist (the chandelier gauntlet + a crumbling minstrel
-// ledge) → climax (the grand staircase, one last chandelier, and the GARGOYLE CUSTODE
-// — a 3-hp stone guardian over the ballroom doors; fell it with three stomps, or slip
-// past between its dives).
+// ledge) → climax (the grand staircase and the FINAL BOSS, the "Custode di Pietra" — a
+// 3-hp multi-phase stone guardian that GATES the ballroom doors: dodge its shockwaves and
+// falling debris, then stomp it during its vulnerable window. See build.js makeBoss).
 
 import { composeMap, arcCollectibles, laneFor, airFor } from "./mapkit.js";
 
@@ -123,7 +123,7 @@ export const LEVEL_6 = {
       // an air enemy there either kills the arc or blocks a needed hop).
       { x: 50, y: AIR, ch: "f" },
       // The hall ghost between the chandeliers — an ARMORED swooper (2 hp), the last
-      // guardian to soften you up before the Gargoyle. Same flight as a ghost, so it stays
+      // guardian to soften you up before the boss. Same flight as a ghost, so it stays
       // passable between dives. (No ghost over the staircase: an air enemy above a required
       // step-up jump can deadlock the climb — the L3 lesson. Chandelier 3 guards the climb
       // instead.)

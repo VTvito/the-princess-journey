@@ -30,8 +30,8 @@ import { getHeartsTaken } from "../state.js";
 // CACHE INVALIDATION — must reset on every scene (re)build: a death/restart goes through
 // `k.go("game")`, which ORPHANS the old scene's objects rather than `destroy()`-ing them, so
 // the previous heroine's `.exists()` can still report true. Trusting `.exists()` alone would
-// keep returning the stale, frozen heroine from the last life and the swoopers/gargoyles/
-// rollers would track a ghost. So `buildLevel()` nulls this at the top of every build (it runs
+// keep returning the stale, frozen heroine from the last life and the swoopers/rollers
+// would track a ghost. So `buildLevel()` nulls this at the top of every build (it runs
 // once per scene setup, before any enemy update fires); the `.exists()` re-query is a belt-and-
 // suspenders guard for a heroine destroyed WITHIN a single life.
 let cachedPlayer = null;
@@ -130,6 +130,11 @@ export function buildLevel(def) {
           // boss derives its hover/window heights from the real staircase top below it (makeBoss).
           let fr = r;
           while (fr < rows.length && (rows[fr]?.[c] ?? " ") !== "=") fr++;
+          // Softlock guard: if the column has no solid floor below (a level-data slip — moving
+          // the boss, a new level), fr would run off the map and the boss would spawn near the
+          // world bottom, breaking the fight WHILE still gating the goal. Fall back to a few
+          // cells under the tile so the heights stay sane and the encounter stays winnable.
+          if (fr >= rows.length) fr = r + 4;
           makeBoss(x + TILE / 2, fr * TILE, theme);
           break;
         }
@@ -464,7 +469,7 @@ function makeSwooper(cx, cy, opts = {}) {
 // --- Armored swooper (Fase 2): a 2-hp diving guardian. Same flight as a swooper — identical
 // dive arc, cooldown sneak window and hitbox — so it can be slipped past during the cooldown
 // without a fight (no stomp required). The only difference is that it shrugs off the first
-// stomp and ENRAGES (quicker dives), a mid-game step up toward the L6 Gargoyle. Iron tint so
+// stomp and ENRAGES (quicker dives), a mid-game step up toward the L6 boss fight. Iron tint so
 // it reads as armored.
 function makeArmoredSwooper(cx, cy) {
   return makeSwooper(cx, cy, { hp: 2, tint: [120, 135, 162] });

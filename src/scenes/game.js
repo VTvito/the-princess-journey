@@ -228,9 +228,10 @@ export function registerGameScene() {
       if (finished || dead) return;
       const stomping = player.vel.y > 60 && player.pos.y < enemy.pos.y;
       if (isInvincible() || stomping) {
-        // Multi-hp enemies (the Gargoyle Custode): a stomp wounds and ENRAGES it — it
+        // Multi-hp enemies (the armored swooper): a stomp wounds and ENRAGES it — it
         // flashes, bounces her off, and dives faster from now on. The star plows
-        // through hp outright (invincibility is earned).
+        // through hp outright (invincibility is earned). (The final boss is NOT an "enemy"
+        // and has its own handler below — it never reaches here.)
         if (stomping && !isInvincible() && enemy.hp && --enemy.hp > 0) {
           player.vel.y = -PHYSICS.STOMP_BOUNCE;
           hitStop();
@@ -242,8 +243,8 @@ export function registerGameScene() {
           if (enemy.art) {
             enemy.art.color = k.rgb(255, 120, 120); // wound flash
             k.wait(0.18, () => {
-              // Reset to the enemy's own base tint (stone for the Gargoyle, iron for the
-              // armored swooper), not a hard-coded grey.
+              // Reset to the enemy's own base tint (iron for the armored swooper), not a
+              // hard-coded grey.
               if (enemy.exists() && enemy.art) enemy.art.color = enemy.baseTint ?? k.rgb(150, 150, 170);
             });
           }
