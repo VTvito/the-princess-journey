@@ -342,7 +342,7 @@ The core journey plus this polishing layer are complete.
 
 ## Built with AI — how this was made
 
-This project was designed and built by **[Vito Delia](https://github.com/VTvito)** in close
+This project was designed and built by **[Vito D'Elia](https://github.com/VTvito)** in close
 collaboration with **[Claude Code](https://claude.com/claude-code)** (Anthropic's agentic coding
 assistant). Claude Code was used end-to-end — architecture decisions, the no-build ES-module
 setup, the level/boss design, the deterministic pixel-art & chiptune generators
