@@ -9,7 +9,7 @@
   "homepage": "https://gameforprincess.vercel.app",
   "repository": {
     "type": "git",
-    "url": "https://github.com/VTvito/game_for_princess.git"
+    "url": "https://github.com/VTvito/the-princess-journey.git"
   },
   "scripts": {
     "serve": "python tools/serve.py 8137",
