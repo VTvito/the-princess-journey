@@ -3,7 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Personalized 2D platformer (Kaplay, no build step). This package.json exists ONLY for the dev-time browser test harness; the game itself loads Kaplay from a CDN and needs no install/build.",
+  "description": "Personalized 2D platformer (Kaplay, no build step). This package.json exists ONLY for the dev-time browser test harness; the game itself loads vendored Kaplay and needs no install/build.",
+  "license": "MIT",
+  "author": "Vito Delia",
+  "homepage": "https://gameforprincess.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VTvito/game_for_princess.git"
+  },
   "scripts": {
     "serve": "python tools/serve.py 8137",
     "gen": "node tools/gen/index.mjs",
