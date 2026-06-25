@@ -35,6 +35,13 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
   clear it; keep that invariant or the D-pad reappears over the menu.
 - **Fit:** `html, body` use `100dvh`; interactive UI uses `env(safe-area-inset-*)`. Don't
   revert to `height: 100%` (it clips under the iOS toolbar).
+- **Canvas wrapper must be a real box, NOT `display: contents`:** the `<main#app>` landmark that
+  wraps `#game` must keep a real viewport-sized box (`display: block; width: 100vw; height: 100dvh`).
+  Kaplay derives the canvas backbuffer from the canvas's **parent** element's dimensions — a
+  `display: contents` wrapper generates **no box (0×0)**, so Kaplay set a **0×0 backbuffer and the
+  whole game rendered blank on desktop** (menu never drew; iOS happened to dodge it). `#game`'s
+  `height: 100%` then resolves against that real box. Caught only by eye / a real render — the
+  Playwright suite asserts scene/state via `__pj`, never pixels, so a blank canvas passes CI.
 - **PWA resume = re-letterbox the canvas:** Kaplay recomputes its letterbox from
   `canvas.offsetWidth/Height` via a `ResizeObserver` on the canvas. On iOS, sending the installed
   PWA to Home and reopening it **in landscape** left a stale canvas size — only **two colour bands**

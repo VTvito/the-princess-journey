@@ -35,10 +35,17 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* The <main> landmark wraps the canvas purely for accessibility; `display: contents` removes
-   its own box so the canvas lays out exactly as before (as a child of <body>). */
+/* The <main> landmark wraps the canvas purely for accessibility. It MUST be a real box that
+   fills the viewport — NOT `display: contents`. Kaplay sizes its canvas/backbuffer from the
+   canvas's PARENT element dimensions; a `display: contents` wrapper generates no box (0×0), so
+   Kaplay read 0 and set a 0×0 backbuffer → blank screen on desktop (the menu never drew). A real
+   block sized to the live viewport (`100dvh` tracks iOS's visible height, preserving the no-clip
+   fix) gives the parent definite dimensions, and #game's height:100% resolves against it. */
 main#app {
-  display: contents;
+  display: block;
+  width: 100vw;
+  height: 100vh; /* fallback for browsers without dvh */
+  height: 100dvh;
 }
 
 /* Off-screen but exposed to assistive tech — for the document <h1> inside <main>. */
@@ -58,7 +65,7 @@ main#app {
 #game {
   display: block;
   width: 100%;
-  height: 100%;
+  height: 100%; /* resolves against main#app, which is a real 100dvh box (see its rule above) */
   outline: none; /* focusable (tabindex) for keyboard, but no focus ring around the canvas */
 }
 
