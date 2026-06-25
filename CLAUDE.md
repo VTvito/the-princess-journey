@@ -35,6 +35,17 @@ npm run deploy               # prod deploy to Vercel (reads VERCEL_TOKEN from gi
   clear it; keep that invariant or the D-pad reappears over the menu.
 - **Fit:** `html, body` use `100dvh`; interactive UI uses `env(safe-area-inset-*)`. Don't
   revert to `height: 100%` (it clips under the iOS toolbar).
+- **PWA resume = re-letterbox the canvas:** Kaplay recomputes its letterbox from
+  `canvas.offsetWidth/Height` via a `ResizeObserver` on the canvas. On iOS, sending the installed
+  PWA to Home and reopening it **in landscape** left a stale canvas size — only **two colour bands**
+  showed (the `body` `#26325c` under a too-short `#game`) and the menu never loaded; rotating the
+  phone was the only recovery (a real orientation change re-fires the observer). `src/viewportResync.js`
+  (installed in `src/main.js`) fixes it: on every foreground signal (`visibilitychange`→visible,
+  `pageshow`, `focus`) it pins the canvas to `window.innerWidth/Height` for one frame, then hands
+  sizing back to the stylesheet — forcing the same recompute the rotation did, plus a delayed second
+  pass (~300ms) for iOS's settling. **Keep this on resume** or the bands-on-reopen bug returns.
+  Emulation can't reproduce the WebKit latch (`tools/test/mobile.mjs` only guards that the resync
+  runs clean + leaves the canvas full-viewport) — confirm the real fix on a physical iPhone.
 - **Mobile render density:** touch devices use `pixelDensity: 1` (`src/kaplayCtx.js`); desktop
   keeps `min(dpr, 2)`. On a 3× iPhone the old 2× backbuffer was ~4× the fill-rate and made the
   game stutter — density 1 is smooth and, on nearest-neighbour pixel art, visually near-identical.

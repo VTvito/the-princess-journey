@@ -187,6 +187,7 @@ src/
   controls.js           reusable input layer: keyboard + DOM touch buttons
   audio.js              Music + SFX buses: bgm playback + persisted toggles + resumeCurrentBgm()
   audioUnlock.js        resumes the AudioContext on the first real DOM gesture (iOS Safari)
+  viewportResync.js     re-letterboxes the canvas on PWA resume (fixes the iOS landscape "2 bands" bug)
   sfx.js                one-shot sound effects (k.play wrapper) on the SFX bus
   juice.js / animspec.js game-feel helpers (confetti) + the sprite animation contract
   ui/                   DOM/HTML overlays, isolated from the game's collision logic
